@@ -1,7 +1,13 @@
 from flask import Flask, request, render_template
-import requests
+import requests as reqs
 from datetime import datetime, UTC
 import math
+
+requests = reqs.Session()
+requests.headers.update({
+    "User-Agent": "earthpol-web/1.0",
+    "Accept": "application/json",
+})
 
 app = Flask(__name__)
 
@@ -48,7 +54,7 @@ def players():
 
 @app.route("/players/<uuid>")
 def player(uuid):
-    req = requests.post("https://api.earthpol.com/astra/players", data=f'{{"query":[{uuid}]}}')
+    req = requests.post("https://api.earthpol.com/astra/players", json={"query": [uuid]})
     if req.status_code != 200 or len(req.json()) == 0:
         return render_template("404.html")
     return render_template("player.html", data = req.json()[0])
@@ -84,7 +90,7 @@ def towns():
 
 @app.route("/town/<uuid>")
 def town(uuid):
-    req = requests.post("https://api.earthpol.com/astra/towns", data=f'{{"query":[{uuid}]}}')
+    req = requests.post("https://api.earthpol.com/astra/towns", json={"query": [uuid]})
     print(req.json())
     if req.status_code != 200 or len(req.json()) == 0:
         return render_template("404.html")
@@ -123,7 +129,7 @@ def nations():
 
 @app.route("/nation/<uuid>")
 def nation(uuid):
-    req = requests.post("https://api.earthpol.com/astra/nations", data=f'{{"query":[{uuid}]}}')
+    req = requests.post("https://api.earthpol.com/astra/nations", json={"query": [uuid]})
     print(req.json())
     if req.status_code != 200 or len(req.json()) == 0:
         return render_template("404.html")
