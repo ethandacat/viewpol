@@ -13,11 +13,24 @@
     <div class="town-body">
         <!-- Left: Map -->
         <div class="map-container">
+            {% if data
+               and data.coordinates
+               and data.coordinates.spawn
+               and data.coordinates.spawn.x is not none
+               and data.coordinates.spawn.z is not none %}
             <iframe 
                 src="https://earthpol.com/map/#world:{{ data.coordinates.spawn.x | round(0, 'floor') }}:0:{{ data.coordinates.spawn.z | round(0, 'floor') }}:300:0:0:0:1:flat"
-                width="100%" height="100%" style="border:0;" allowfullscreen
+                width="100%"
+                height="100%"
+                style="border:0;"
+                allowfullscreen
                 loading="lazy">
-            </iframe><br><br><br>
+            </iframe>
+            {% else %}
+            <p>No spawn set.</p>
+            {% endif %}
+
+            <br><br><br>
             <img loading="lazy"
                  src="https://cdn.earthpol.com/nations/{{ data.name }}.png"
                  alt="{{ data.name }} flag"
@@ -39,7 +52,7 @@
                     <img src="https://api.mineatar.io/head/{{ data.king.uuid }}?scale=4&overlay=true" alt="{{ data.king.name }} head">
                     <a href="/players/{{ data.king.uuid }}">{{ data.king.name }}</a>
                 </p>
-                <p>Capital: <a href="/town/{{ data.capital.uuid }}">{{ data.capital.name }}</a></p>
+                <p>Capital: <a href="/towns/{{ data.capital.uuid }}">{{ data.capital.name }}</a></p>
                 <p>Discord: 
                     {% if data.discord %}
                         <a href="{{ data.discord }}">{{ data.discord }}</a>
@@ -76,7 +89,7 @@
                 {% if data.residents %}
                     {% set display = data.towns[:50] %}
                     {% for r in display %}
-                        <a href="/town/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
+                        <a href="/towns/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
                     {% if data.towns|length > 50 %}, ...{% endif %}
                 {% else %}
@@ -89,7 +102,7 @@
                 {% if data.allies %}
                     {% set display = data.allies[:10] %}
                     {% for t in display %}
-                        <a href="/nation/{{ t.uuid }}">{{ t.name }}</a>{% if not loop.last %}, {% endif %}
+                        <a href="/nations/{{ t.uuid }}">{{ t.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
                     {% if data.allies|length > 10 %}, ...{% endif %}
                 {% else %}
@@ -102,7 +115,7 @@
                 {% if data.enemies %}
                     {% set display = data.enemies[:10] %}
                     {% for o in display %}
-                        <a href="/nation/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
+                        <a href="/nations/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
                     {% if data.enemies|length > 10 %}, ...{% endif %}
                 {% else %}
@@ -115,7 +128,7 @@
                 {% if data.sanctioned %}
                     {% set display = data.sanctioned[:10] %}
                     {% for o in display %}
-                        <a href="/nation/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
+                        <a href="/nations/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
                     {% if data.sanctioned|length > 10 %}, ...{% endif %}
                 {% else %}

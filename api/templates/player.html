@@ -28,8 +28,8 @@
         <div class="section">
             <h2>Location</h2>
             Resides in:
-            {% if data.town.name %}<a href="/town/{{ data.town.uuid }}">{{ data.town.name }}</a>{% else %}None{% endif %},
-            {% if data.nation.name %}<a href="/nation/{{ data.nation.uuid }}">{{ data.nation.name }}</a>{% else %}None{% endif %}
+            {% if data.town.name %}<a href="/towns/{{ data.town.uuid }}">{{ data.town.name }}</a>{% else %}None{% endif %},
+            {% if data.nation.name %}<a href="/nations/{{ data.nation.uuid }}">{{ data.nation.name }}</a>{% else %}None{% endif %}
         </div>
 
         <div class="section">

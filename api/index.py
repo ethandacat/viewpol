@@ -88,7 +88,7 @@ def towns():
         query=query
     )
 
-@app.route("/town/<uuid>")
+@app.route("/towns/<uuid>")
 def town(uuid):
     req = requests.post("https://api.earthpol.com/astra/towns", json={"query": [uuid]})
     print(req.json())
@@ -127,7 +127,7 @@ def nations():
         query=query
     )
 
-@app.route("/nation/<uuid>")
+@app.route("/nations/<uuid>")
 def nation(uuid):
     req = requests.post("https://api.earthpol.com/astra/nations", json={"query": [uuid]})
     print(req.json())
