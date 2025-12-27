@@ -96,7 +96,9 @@ def nations():
     query = request.args.get('q', '').lower()
 
     # Fetch all players (text only)
-    reqdata = requests.get("https://api.earthpol.com/astra/nations").json()
+    reqdata = requests.get("https://api.earthpol.com/astra/nations")
+    print(reqdata.status_code, reqdata.text)
+    reqdata = reqdata.json()
 
     # Filter by search query
     if query:
