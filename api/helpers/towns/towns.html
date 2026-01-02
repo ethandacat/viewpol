@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Towns | ViewPol{% endblock %}
+
+{% block content %}
+<a href="/">← Back to home</a>
+<h1>Towns</h1>
+
+<div class="search-bar">
+    <form method="get" action="/towns">
+        <input type="text" name="q" placeholder="Search towns..." value="{{ query }}">
+        <input type="hidden" name="page" value="1">
+        <button type="submit">Search</button>
+    </form>
+</div>
+
+<div class="grid">
+    {% for town in players %} {# reusing players variable #}
+    <div class="player-card">
+        <h2><a href="/towns/{{ town.uuid }}">{{ town.name }}</a></h2>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="/towns?page=1&q={{ query }}">« First</a>
+        <a href="/towns?page={{ page-1 }}&q={{ query }}">‹ Prev</a>
+    {% endif %}
+
+    {% set start = page - 2 if page > 2 else 1 %}
+    {% set end = page + 2 if page < total_pages - 2 else total_pages %}
+
+    {% if start > 1 %}
+        <span>…</span>
+    {% endif %}
+
+    {% for i in range(start, end + 1) %}
+        {% if i == page %}
+            <a class="current">{{ i }}</a>
+        {% else %}
+            <a href="/towns?page={{ i }}&q={{ query }}">{{ i }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if end < total_pages %}
+        <span>…</span>
+    {% endif %}
+
+    {% if page < total_pages %}
+        <a href="/towns?page={{ page+1 }}&q={{ query }}">Next ›</a>
+        <a href="/towns?page={{ total_pages }}&q={{ query }}">Last »</a>
+    {% endif %}
+</div>
+
+{% endblock %}
