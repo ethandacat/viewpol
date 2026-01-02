@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <title>{% block title %}ViewPol{% endblock %}</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Roboto, sans-serif;
             background-color: #121212;
             color: #e0e0e0;
             margin: 0;
@@ -15,6 +18,11 @@
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .shopgrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 15px;
         }
         .nationgrid {
@@ -54,11 +62,99 @@
 
         .search-bar { text-align: center; margin-bottom: 20px; }
         .search-bar input { padding: 8px; font-size: 16px; border-radius: 5px; border: none; width: 250px; }
-        .pagination { text-align: center; margin-top: 20px; }
+        .pagination { 
+            text-align: center; 
+            margin-top: 20px; 
+            border-radius:20px; 
+            position: fixed; 
+            bottom: 1em; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            padding: 20px;
+            background-color: #1e1e1e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5em; /* Space between controls */
+        }
         .pagination a { margin: 0 5px; color: #4da6ff; text-decoration: none; font-weight: bold; }
+        .pagination a.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
         .pagination a.current { color: #ffffff; }
+        .pagination .filler {
+            color: #666;
+            pointer-events: none;
+        }
         button { padding: 6px 10px; border: none; border-radius: 5px; background-color: #4da6ff; color: #fff; cursor: pointer; }
         button:hover { background-color: #80c1ff; }
+        @font-face {
+            font-family: 'Minecraft';
+            src: url('/assets/mcfont.otf') format('opentype');
+        }
+        .filters {
+          display: flex;
+          gap: 24px;
+          margin: 20px 0;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        
+        .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 0;
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 8px;
+          overflow: hidden;
+          padding: 4px;
+        }
+        
+        .filter-group input[type="radio"] {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+        
+        .filter-group label {
+          display: block;
+          padding: 10px 16px;
+          margin: 0;
+          font-weight: 500;
+          color: #ccc;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border-radius: 6px;
+          white-space: nowrap;
+          position: relative;
+        }
+        
+        .filter-group input[type="radio"]:checked + label {
+          background: #007bff;
+          color: white;
+          box-shadow: 0 2px 8px rgba(0,123,255,0.4);
+        }
+        
+        .filter-group label:hover {
+          background: #3a3a3a;
+          color: #fff;
+        }
+        
+        @media (max-width: 768px) {
+          .filters {
+            flex-direction: column;
+            gap: 16px;
+            align-items: stretch;
+          }
+          
+          .filter-group {
+            justify-content: center;
+          }
+        }
     </style>
 </head>
 <body>

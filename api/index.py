@@ -1,139 +1,29 @@
-from flask import Flask, request, render_template
-import requests as reqs
-from datetime import datetime, UTC
-import math
+from flask import Flask
+from pathlib import Path
 
-requests = reqs.Session()
-requests.headers.update({
-    "User-Agent": "earthpol-web/1.0",
-    "Accept": "application/json",
-})
+from api.helpers.helpers import extras
+from api.helpers.index import index
+from api.helpers.nation import nation
+from api.helpers.nations import nations
+from api.helpers.player import player
+from api.helpers.players import players
+from api.helpers.shop import shop
+from api.helpers.shops import shops
+from api.helpers.town import town
+from api.helpers.towns import towns
+from api.helpers.errors import errors
 
-app = Flask(__name__)
 
-PLAYERS_PER_PAGE = 50
-TOWNS_PER_PAGE = 100
-NATIONS_PER_PAGE = 50
+app = Flask(__name__, static_folder = "assets")
 
-@app.template_filter('datetimeformat')
-def datetimeformat(value):
-    # value is in seconds
-    dt = datetime.fromtimestamp(value, UTC)
-    return dt.strftime("%B %d, %Y %I:%M %p UTC")
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/players")
-def players():
-    page = int(request.args.get('page', 1))
-    query = request.args.get('q', '').lower()
-
-    # Fetch all players (text only)
-    reqdata = requests.get("https://api.earthpol.com/astra/players").json()
-
-    # Filter by search query
-    if query:
-        reqdata = [p for p in reqdata if query in p['name'].lower()]
-
-    # Pagination
-    total_players = len(reqdata)
-    total_pages = max(1, math.ceil(total_players / PLAYERS_PER_PAGE))
-    start = (page - 1) * PLAYERS_PER_PAGE
-    end = start + PLAYERS_PER_PAGE
-    players_page = reqdata[start:end]  # Only fetch skins for these
-
-    return render_template(
-        "players.html",
-        players=players_page,
-        page=page,
-        total_pages=total_pages,
-        query=query
-    )
-
-@app.route("/players/<uuid>")
-def player(uuid):
-    req = requests.post("https://api.earthpol.com/astra/players", json={"query": [uuid]})
-    if req.status_code != 200 or len(req.json()) == 0:
-        return render_template("404.html")
-    return render_template("player.html", data = req.json()[0])
-
-@app.route("/towns")
-def towns():
-    page = int(request.args.get('page', 1))
-    query = request.args.get('q', '').lower()
-
-    # Fetch all players (text only)
-    reqdata = requests.get("https://api.earthpol.com/astra/towns").json()
-
-    # Filter by search query
-    if query:
-        reqdata = [p for p in reqdata if query in p['name'].lower()]
-
-    # Pagination
-    total_players = len(reqdata)
-    total_pages = max(1, math.ceil(total_players / TOWNS_PER_PAGE))
-    start = (page - 1) * TOWNS_PER_PAGE
-    end = start + TOWNS_PER_PAGE
-    players_page = reqdata[start:end]  # Only fetch skins for these
-    for i in players_page:
-        i["name"] = " ".join(i["name"].split("_"))
-
-    return render_template(
-        "towns.html",
-        players=players_page,
-        page=page,
-        total_pages=total_pages,
-        query=query
-    )
-
-@app.route("/towns/<uuid>")
-def town(uuid):
-    req = requests.post("https://api.earthpol.com/astra/towns", json={"query": [uuid]})
-    print(req.json())
-    if req.status_code != 200 or len(req.json()) == 0:
-        return render_template("404.html")
-    return render_template("town.html", data = req.json()[0])
-
-@app.route("/nations")
-def nations():
-    page = int(request.args.get('page', 1))
-    query = request.args.get('q', '').lower()
-
-    # Fetch all players (text only)
-    reqdata = requests.get("https://api.earthpol.com/astra/nations")
-    print(reqdata.status_code, reqdata.text)
-    reqdata = reqdata.json()
-
-    # Filter by search query
-    if query:
-        reqdata = [p for p in reqdata if query in p['name'].lower()]
-
-    # Pagination
-    total_players = len(reqdata)
-    total_pages = max(1, math.ceil(total_players / NATIONS_PER_PAGE))
-    start = (page - 1) * NATIONS_PER_PAGE
-    end = start + NATIONS_PER_PAGE
-    players_page = reqdata[start:end]  # Only fetch skins for these
-    for i in players_page:
-        i["name"] = " ".join(i["name"].split("_"))
-
-    return render_template(
-        "nations.html",
-        players=players_page,
-        page=page,
-        total_pages=total_pages,
-        query=query
-    )
-
-@app.route("/nations/<uuid>")
-def nation(uuid):
-    req = requests.post("https://api.earthpol.com/astra/nations", json={"query": [uuid]})
-    print(req.json())
-    if req.status_code != 200 or len(req.json()) == 0:
-        return render_template("404.html")
-    return render_template("nation.html", data = req.json()[0])
-
-if __name__ == "__main__":
-    app.run("127.0.0.1", port=8000)
+app.register_blueprint(extras.app)
+app.register_blueprint(index.app)
+app.register_blueprint(nation.app)
+app.register_blueprint(nations.app)
+app.register_blueprint(player.app)
+app.register_blueprint(players.app)
+app.register_blueprint(shop.app)
+app.register_blueprint(shops.app)
+app.register_blueprint(town.app)
+app.register_blueprint(towns.app)
+app.register_blueprint(errors.app)
