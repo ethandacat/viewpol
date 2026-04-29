@@ -29,6 +29,14 @@
             {% else %}
             <p>No spawn set.</p>
             {% endif %}
+            
+            <br><br><br>
+            <img loading="lazy"
+                 src="https://cdn.earthpol.com/towns/{{ data.name }}.png"
+                 alt="{{ data.name }} flag"
+                 style="width: 100%; height: auto; max-height: 300px; object-fit: contain;"
+                 onerror="this.style.display='none'; document.querySelector('.abcdefg').style.display='none';">
+            <p style="text-align: center;" class="abcdefg"><em>{{ data.name }}'s Flag</em></p>
         </div>
 
         <!-- Right: Info -->
