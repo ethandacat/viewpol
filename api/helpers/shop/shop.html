@@ -19,25 +19,17 @@
     "white": "#FFFFFF"
 } %}
 
-{% set is_selling = "SellingType" in data.type|string %}
-{% set is_buying = "BuyingType" in data.type|string %}
 
 {% block title %}{{ data.item.item.replace("_", " ")|title }} Shop | ViewPol{% endblock %}
 
 {% block content %}
 <a href="/shops">← Back to shops</a>
 
+
+
 <div class="town-profile-container">
     <div class="town-header">
-        <div class="small">
-            {% if is_selling %}
-                Selling
-            {% elif is_buying %}
-                Buying
-            {% else %}
-                Unknown
-            {% endif %}
-        </div>
+        <div class="small">{{ data.type|title }}</div>
         <h1>{{ data.item.item.replace("_", " ")|title }}</h1>
     </div>
 
@@ -72,32 +64,29 @@
             <div class="section">
                 <h2>Owner</h2>
                 <p>
-                    <img src="https://api.mineatar.io/head/{{ data.owner }}?scale=4&overlay=true" alt="{{ data.owner }} head">
-                    <a href="/players/{{ data.owner }}">{{ data.owner }}</a>
+                    <img src="https://api.mineatar.io/head/{{ data.owner }}?scale=4&overlay=true" alt="{{ username }} head">
+                    <a href="/players/{{ data.owner }}">{{ username }}</a>
                 </p>
             </div>
 
             <div class="section">
                 <h2>Stock</h2>
                 <p>
-                    {% if is_selling %}
+                    {% if data.type == "SELLING" %}
                         {% if data.stock == -1 or data.stock == 0 %}
                             Out of stock.
                         {% else %}
                             Stock: {{ data.stock }}
                         {% endif %}
-                    {% elif is_buying %}
+                    {% else %}
                         {% if data.space == -1 or data.space == 0 %}
                             Out of space.
                         {% else %}
                             Space: {{ data.space }}
                         {% endif %}
-                    {% else %}
-                        Unknown shop type. Incredible.
                     {% endif %}
                 </p>
             </div>
-
             <div class="section">
                 <h2>Item Lore</h2>
                 {% if data.item.meta and data.item.meta.lore %}
@@ -113,6 +102,8 @@
                                     {% if part.underlined %} text-decoration: underline;{% endif %}
                                     {% if part.strikethrough %} text-decoration: line-through;{% endif %}
                                     font-size: 1.5rem;
+                                    margin: 0;
+                                    padding: 0;
                                 ">{{ part.text }}</span>
                             {% endfor %}
                         {% else %}
@@ -125,12 +116,10 @@
                     <p>No lore.</p>
                 {% endif %}
             </div>
-
             <div class="section">
                 <h2>Item</h2>
                 <p>Type: <code>minecraft:{{ data.item.item|lower }}</code></p>
                 <p>Amount: {{ data.item.amount }}</p>
-
                 {% set all_enchants = {} %}
                 
                 {% if data.item.meta %}
@@ -155,7 +144,6 @@
                     </ul>
                 {% endif %}
             </div>
-
             {% if data.item.meta and "BOOK" in data.item.meta["meta-type"] %}
             <div class="section">
                 <h2>Book Preview</h2>
@@ -163,7 +151,7 @@
                 <p class="bgl">{{ data.item.meta.pages[0] }}...</p>
             </div>
             {% endif %}
-        </div>
+        <div>
     </div>
 </div>
 
