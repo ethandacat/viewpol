@@ -41,6 +41,11 @@ def load_shops():
         n["item"] = itemstack.parse(n["item"])
         qty = n["item"]["amount"]
         n["unit_price"] = n["price"] / qty if qty else float("inf")
+        raw_type = str(n.get("type", "")).lower()
+        if "buying" in raw_type:
+            n["type"] = "BUYING"
+        elif "selling" in raw_type:
+            n["type"] = "SELLING"
     return reqdata
 
 def filter_and_page(reqdata, query, stock_filter, type_filter, page):
