@@ -49,9 +49,10 @@
             <img class="leader-bust"
                  src="https://vzge.me/bust/156/{{ data.king.name }}"
                  alt="{{ data.king.name }}">
-            <div class="leader-identity">
-                <a href="/players/{{ data.king.uuid }}" class="leader-name">{{ data.king.name }}</a>
-                <span class="leader-role">King</span>
+            <h2>👑 Leadership</h2>
+            <div class="info-row">
+                <span class="info-label">King</span>
+                <a href="/players/{{ data.king.uuid }}">{{ data.king.name }}</a>
             </div>
             <div class="info-row">
                 <span class="info-label">Capital</span>
@@ -265,38 +266,16 @@
 
 .leadership-section {
     position: relative;
-    padding-top: 80px;
-    margin-top: 70px;
+    overflow: visible;
 }
 .leader-bust {
     position: absolute;
-    top: -70px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 110px;
+    top: -16px;
+    right: -16px;
+    width: 96px;
     image-rendering: pixelated;
-    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6));
-}
-.leader-identity {
-    text-align: center;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #252525;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-.leader-name {
-    font-size: 17px;
-    font-weight: 700;
-    color: #f0f0f0 !important;
-}
-.leader-name:hover { color: #7dc0ff !important; }
-.leader-role {
-    font-size: 11px;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    filter: drop-shadow(0 4px 14px rgba(0,0,0,0.6));
+    pointer-events: none;
 }
 
 .info-row {
