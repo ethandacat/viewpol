@@ -16,6 +16,11 @@
 <div class="grid">
     {% for town in players %} {# reusing players variable #}
     <div class="player-card">
+        <img loading="lazy"
+             src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
+             alt="{{ town.name }} flag"
+             style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
+             onerror="this.style.display='none';">
         <h2><a href="/towns/{{ town.uuid }}">{{ town.name }}</a></h2>
     </div>
     {% endfor %}

@@ -17,18 +17,40 @@ requests.headers.update({
     "Accept": "application/json",
 })
 
+
+# --- type normalization (because backend hates you) ---
+def get_shop_type(n):
+    raw = str(n.get("type", ""))
+
+    # try clean extraction first
+    cleaned = raw.split(".")[-1].split("@")[0].replace("Type", "").upper()
+    if cleaned in ("SELLING", "BUYING"):
+        return cleaned
+
+    # fallback paranoia
+    if "SellingType" in raw:
+        return "SELLING"
+    if "BuyingType" in raw:
+        return "BUYING"
+
+    return "UNKNOWN"
+
+
 def update_shop_cache():
     metadata = vb.head("shopdata.json")
     uploaded = datetime.fromisoformat(metadata["uploadedAt"].replace("Z", "+00:00"))
+
     if datetime.now(UTC) - uploaded > timedelta(minutes=5):
         fresh_data = requests.get("https://api.earthpol.com/astra/shops").content
         vb.put("shopdata.json", fresh_data, options={"allowOverwrite": "true"})
+
 
 def load_shops():
     try:
         metadata = vb.head("shopdata.json")
         req = requests.get(metadata["downloadUrl"])
         reqdata = json.loads(decode(req.content))
+
     except BaseException as e:
         if "not_found" in str(e):
             req = requests.get("https://api.earthpol.com/astra/shops")
@@ -39,14 +61,15 @@ def load_shops():
 
     for n in reqdata:
         n["item"] = itemstack.parse(n["item"])
+
+        # IMPORTANT: overwrite raw java garbage so templates stay unchanged
+        n["type"] = get_shop_type(n)
+
         qty = n["item"]["amount"]
         n["unit_price"] = n["price"] / qty if qty else float("inf")
-        raw_type = str(n.get("type", "")).lower()
-        if "buying" in raw_type:
-            n["type"] = "BUYING"
-        elif "selling" in raw_type:
-            n["type"] = "SELLING"
+
     return reqdata
+
 
 def filter_and_page(reqdata, query, stock_filter, type_filter, page):
     if query:
@@ -56,15 +79,19 @@ def filter_and_page(reqdata, query, stock_filter, type_filter, page):
         ]
 
     def passes_filters(n):
-        if type_filter == "buying" and n["type"] != "BUYING":
+        t = n.get("type", "UNKNOWN")
+
+        if type_filter == "buying" and t != "BUYING":
             return False
-        if type_filter == "selling" and n["type"] != "SELLING":
+        if type_filter == "selling" and t != "SELLING":
             return False
+
         if stock_filter == "hide":
-            if n["type"] == "SELLING" and n.get("stock", 0) <= 0:
+            if t == "SELLING" and n.get("stock", 0) <= 0:
                 return False
-            if n["type"] != "SELLING" and n.get("space", 0) <= 0:
+            if t == "BUYING" and n.get("space", 0) <= 0:
                 return False
+
         return True
 
     reqdata = [n for n in reqdata if passes_filters(n)]
@@ -72,12 +99,15 @@ def filter_and_page(reqdata, query, stock_filter, type_filter, page):
 
     total = len(reqdata)
     total_pages = max(1, math.ceil(total / SHOPS_PER_PAGE))
+
     page = max(1, min(page, total_pages))
+
     start = (page - 1) * SHOPS_PER_PAGE
     end = start + SHOPS_PER_PAGE
     players_page = reqdata[start:end]
 
     return players_page, page, total_pages
+
 
 @app.route("/shops")
 def shops_page():
@@ -87,6 +117,7 @@ def shops_page():
     type_filter = request.args.get("type_filter", "both")
 
     reqdata = load_shops()
+
     players_page, page, total_pages = filter_and_page(
         reqdata, query, stock_filter, type_filter, page
     )
@@ -104,6 +135,7 @@ def shops_page():
         SHOPS_PER_PAGE=SHOPS_PER_PAGE,
     )
 
+
 @app.route("/shops/data")
 def shops_data():
     page = int(request.args.get("page", 1))
@@ -112,6 +144,7 @@ def shops_data():
     type_filter = request.args.get("type_filter", "both")
 
     reqdata = load_shops()
+
     players_page, page, total_pages = filter_and_page(
         reqdata, query, stock_filter, type_filter, page
     )
