@@ -3,161 +3,324 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ViewPol{% endblock %}</title>
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
         body {
-            font-family: Roboto, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            background-color: #111;
+            color: #e8e8e8;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            min-height: 100vh;
         }
-        h1 { text-align: center; }
+
+        /* ─── Navbar ─────────────────── */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            padding: 0 28px;
+            gap: 20px;
+            background: rgba(13, 13, 13, 0.94);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #1e1e1e;
+        }
+        .navbar-brand {
+            font-size: 17px;
+            font-weight: 700;
+            color: #f0f0f0 !important;
+            text-decoration: none !important;
+            letter-spacing: 0.2px;
+            flex-shrink: 0;
+        }
+        .navbar-brand:hover { color: #4da6ff !important; }
+        .navbar-divider {
+            width: 1px;
+            height: 18px;
+            background: #2a2a2a;
+            flex-shrink: 0;
+        }
+        .navbar-links {
+            display: flex;
+            gap: 2px;
+        }
+        .navbar-links a {
+            color: #888 !important;
+            text-decoration: none !important;
+            font-size: 13.5px;
+            font-weight: 500;
+            padding: 5px 11px;
+            border-radius: 7px;
+            transition: color 0.15s, background 0.15s;
+        }
+        .navbar-links a:hover {
+            color: #e0e0e0 !important;
+            background: #1c1c1c;
+        }
+
+        /* ─── Page wrapper ───────────── */
+        .page-wrapper {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 32px 28px 120px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0 0 24px;
+            color: #f0f0f0;
+        }
+
+        /* ─── Back link ──────────────── */
+        a.back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #777 !important;
+            text-decoration: none !important;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 5px 11px 5px 8px;
+            border-radius: 7px;
+            border: 1px solid #242424;
+            background: #181818;
+            margin-bottom: 22px;
+            transition: all 0.15s;
+        }
+        a.back-link:hover {
+            color: #ccc !important;
+            border-color: #343434;
+            background: #1e1e1e;
+        }
+
+        /* ─── Grids ──────────────────── */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
+            gap: 14px;
         }
         .shopgrid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
+            gap: 14px;
         }
         .nationgrid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 2fr));
-            gap: 15px;
-        }
-        .player-card {
-            background: #1e1e1e;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.5);
-            text-align: center;
-            display: flex;              /* use flexbox */
-            flex-direction: column;     /* stack vertically */
-            align-items: center;        /* center horizontally */
-            gap: 10px;                  /* spacing between head and name */
-            transition: transform 0.2s, box-shadow 0.2s;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 2fr));
+            gap: 14px;
         }
 
+        /* ─── Cards ──────────────────── */
+        .player-card {
+            background: #181818;
+            border: 1px solid #242424;
+            padding: 16px;
+            border-radius: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+        }
         .player-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.8);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            border-color: #333;
         }
         .player-card img {
             width: 80px;
             height: 80px;
-            margin-bottom: 10px;
+            margin-bottom: 2px;
         }
+
+        /* ─── Links ──────────────────── */
         a {
             text-decoration: none;
             color: #4da6ff;
-            font-weight: bold;
-            font-size: 16px;
+            font-weight: 500;
+            font-size: 15px;
         }
-        a:hover { color: #80c1ff; }
+        a:hover { color: #7dc0ff; }
 
-        .search-bar { text-align: center; margin-bottom: 20px; }
-        .search-bar input { padding: 8px; font-size: 16px; border-radius: 5px; border: none; width: 250px; }
-        .pagination { 
-            text-align: center; 
-            margin-top: 20px; 
-            border-radius:20px; 
-            position: fixed; 
-            bottom: 1em; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            padding: 20px;
-            background-color: #1e1e1e;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5em; /* Space between controls */
+        /* ─── Search bar ─────────────── */
+        .search-bar {
+            text-align: center;
+            margin-bottom: 20px;
         }
-        .pagination a { margin: 0 5px; color: #4da6ff; text-decoration: none; font-weight: bold; }
+        .search-bar form {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .search-bar input {
+            padding: 9px 13px;
+            font-size: 13.5px;
+            font-family: inherit;
+            border-radius: 8px;
+            border: 1px solid #272727;
+            background: #181818;
+            color: #e0e0e0;
+            width: 280px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .search-bar input:focus {
+            border-color: #3d7bd6;
+            box-shadow: 0 0 0 3px rgba(61,123,214,0.14);
+        }
+        .search-bar input::placeholder { color: #555; }
+
+        /* ─── Buttons ────────────────── */
+        button {
+            padding: 9px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: #fff;
+            font-size: 13.5px;
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        button:hover { background: #3b82f6; }
+
+        /* ─── Pagination ─────────────── */
+        .pagination {
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 14px;
+            background: rgba(18, 18, 18, 0.96);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid #252525;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+        }
+        .pagination a {
+            color: #888 !important;
+            text-decoration: none !important;
+            font-weight: 500;
+            font-size: 13px;
+            padding: 5px 9px;
+            border-radius: 6px;
+            transition: color 0.15s, background 0.15s;
+        }
+        .pagination a:hover {
+            color: #e0e0e0 !important;
+            background: #222;
+        }
         .pagination a.disabled {
-            opacity: 0.5;
+            opacity: 0.3;
             cursor: not-allowed;
             pointer-events: none;
         }
-        .pagination a.current { color: #ffffff; }
-        .pagination .filler {
-            color: #666;
-            pointer-events: none;
+        .pagination a.current {
+            color: #fff !important;
+            background: #2563eb;
         }
-        button { padding: 6px 10px; border: none; border-radius: 5px; background-color: #4da6ff; color: #fff; cursor: pointer; }
-        button:hover { background-color: #80c1ff; }
+        .pagination .filler {
+            color: #444;
+            pointer-events: none;
+            font-size: 13px;
+            padding: 0 4px;
+        }
+
+        /* ─── Minecraft font ─────────── */
         @font-face {
             font-family: 'Minecraft';
             src: url('/assets/mcfont.otf') format('opentype');
         }
+
+        /* ─── Filters ────────────────── */
         .filters {
-          display: flex;
-          gap: 24px;
-          margin: 20px 0;
-          align-items: center;
-          flex-wrap: wrap;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
         }
-        
         .filter-group {
-          display: flex;
-          align-items: center;
-          gap: 0;
-          background: #2a2a2a;
-          border: 1px solid #444;
-          border-radius: 8px;
-          overflow: hidden;
-          padding: 4px;
+            display: flex;
+            align-items: center;
+            background: #161616;
+            border: 1px solid #252525;
+            border-radius: 9px;
+            overflow: hidden;
+            padding: 3px;
         }
-        
         .filter-group input[type="radio"] {
-          position: absolute;
-          opacity: 0;
-          width: 0;
-          height: 0;
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
-        
         .filter-group label {
-          display: block;
-          padding: 10px 16px;
-          margin: 0;
-          font-weight: 500;
-          color: #ccc;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          border-radius: 6px;
-          white-space: nowrap;
-          position: relative;
+            display: block;
+            padding: 6px 13px;
+            margin: 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: #777;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-radius: 7px;
+            white-space: nowrap;
         }
-        
         .filter-group input[type="radio"]:checked + label {
-          background: #007bff;
-          color: white;
-          box-shadow: 0 2px 8px rgba(0,123,255,0.4);
+            background: #2563eb;
+            color: #fff;
         }
-        
         .filter-group label:hover {
-          background: #3a3a3a;
-          color: #fff;
+            background: #202020;
+            color: #bbb;
         }
-        
+
         @media (max-width: 768px) {
-          .filters {
-            flex-direction: column;
-            gap: 16px;
-            align-items: stretch;
-          }
-          
-          .filter-group {
-            justify-content: center;
-          }
+            .page-wrapper { padding: 20px 16px 120px; }
+            .navbar { padding: 0 16px; gap: 14px; }
+            .navbar-links a { padding: 5px 8px; font-size: 13px; }
+            .search-bar input { width: 220px; }
+            .filters {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            .filter-group { justify-content: center; }
         }
     </style>
 </head>
 <body>
-    {% block content %}{% endblock %}
+    <nav class="navbar">
+        <a href="/" class="navbar-brand">ViewPol</a>
+        <div class="navbar-divider"></div>
+        <div class="navbar-links">
+            <a href="/nations">🌍 Nations</a>
+            <a href="/towns">🏘️ Towns</a>
+            <a href="/players">👤 Players</a>
+            <a href="/shops">🏦 Shops</a>
+        </div>
+    </nav>
+    <div class="page-wrapper">
+        {% block content %}{% endblock %}
+    </div>
 </body>
 </html>
