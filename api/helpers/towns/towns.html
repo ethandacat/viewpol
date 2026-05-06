@@ -1,60 +1,155 @@
 {% extends "base.html" %}
-
 {% block title %}Towns | ViewPol{% endblock %}
 
 {% block content %}
 <h1>Towns</h1>
 
 <div class="search-bar">
-    <form method="get" action="/towns">
-        <input type="text" name="q" placeholder="Search towns..." value="{{ query }}">
-        <input type="hidden" name="page" value="1">
+    <form id="search-form">
+        <input type="text" id="search-input" placeholder="Search towns..." value="{{ query }}">
         <button type="submit">Search</button>
     </form>
 </div>
 
-<div class="grid">
-    {% for town in players %} {# reusing players variable #}
-    <div class="player-card">
-        <img loading="lazy"
-             src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
-             alt="{{ town.name }} flag"
-             style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
-             onerror="this.style.display='none';">
-        <h2><a href="/towns/{{ town.uuid }}">{{ town.name }}</a></h2>
+<div id="town-grid-container">
+    <div class="grid nationgrid" style="visibility: hidden;">
+        {% for town in players %}
+        <div class="player-card" data-name="{{ town.name }}">
+            <img loading="lazy"
+                 src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
+                 alt="{{ town.name }} flag"
+                 style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
+                 onerror="this.style.display='none';">
+            <a href="/towns/{{ town.uuid }}" style="display: block; text-align: center;">{{ town.name }}</a>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
 
-<div class="pagination">
-    {% if page > 1 %}
-        <a href="/towns?page=1&q={{ query }}">« First</a>
-        <a href="/towns?page={{ page-1 }}&q={{ query }}">‹ Prev</a>
-    {% endif %}
+<div class="pagination" id="pagination-controls"></div>
 
-    {% set start = page - 2 if page > 2 else 1 %}
-    {% set end = page + 2 if page < total_pages - 2 else total_pages %}
+<script>
+const TOWNS_PER_PAGE = 20;
+let currentPage = {{ page }};
 
-    {% if start > 1 %}
-        <span>…</span>
-    {% endif %}
+document.addEventListener('DOMContentLoaded', async () => {
+    const gridContainer = document.querySelector('.nationgrid');
+    const allCards = Array.from(document.querySelectorAll('.player-card'));
 
-    {% for i in range(start, end + 1) %}
-        {% if i == page %}
-            <a class="current">{{ i }}</a>
-        {% else %}
-            <a href="/towns?page={{ i }}&q={{ query }}">{{ i }}</a>
-        {% endif %}
-    {% endfor %}
+    const flagChecks = allCards.map(card => {
+        const img = card.querySelector('img');
+        return new Promise(resolve => {
+            const testImg = new Image();
+            testImg.onload = () => resolve({ card, hasFlag: true });
+            testImg.onerror = () => resolve({ card, hasFlag: false });
+            testImg.src = img.src;
+        });
+    });
 
-    {% if end < total_pages %}
-        <span>…</span>
-    {% endif %}
+    const results = await Promise.all(flagChecks);
 
-    {% if page < total_pages %}
-        <a href="/towns?page={{ page+1 }}&q={{ query }}">Next ›</a>
-        <a href="/towns?page={{ total_pages }}&q={{ query }}">Last »</a>
-    {% endif %}
-</div>
+    let towns = results.map(r => ({
+        name: r.card.dataset.name,
+        element: r.card,
+        hasFlag: r.hasFlag
+    }));
+
+    function sortTowns(list) {
+        return list.sort((a, b) => {
+            if (a.hasFlag !== b.hasFlag) return b.hasFlag - a.hasFlag;
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+    }
+
+    const totalPages = Math.ceil(towns.length / TOWNS_PER_PAGE);
+
+    function renderPage(page) {
+        const start = (page - 1) * TOWNS_PER_PAGE;
+        const end = start + TOWNS_PER_PAGE;
+        const pageItems = towns.slice(start, end);
+
+        gridContainer.innerHTML = '';
+        pageItems.forEach(t => gridContainer.appendChild(t.element));
+
+        renderPaginationControls(page);
+    }
+
+    function renderPaginationControls(page) {
+        const container = document.getElementById('pagination-controls');
+        container.innerHTML = '';
+
+        const controls = [];
+
+        const first = document.createElement('a');
+        first.href = '#';
+        first.textContent = '« First';
+        first.className = page === 1 ? 'disabled' : '';
+        if (page !== 1) first.onclick = e => { e.preventDefault(); goToPage(1); };
+        controls.push(first);
+
+        const prev = document.createElement('a');
+        prev.href = '#';
+        prev.textContent = '‹ Prev';
+        prev.className = page === 1 ? 'disabled' : '';
+        if (page > 1) prev.onclick = e => { e.preventDefault(); goToPage(page - 1); };
+        controls.push(prev);
+
+        const startNum = Math.max(1, Math.min(totalPages - 2, page - 1));
+        for (let i = 0; i < 3; i++) {
+            const numPage = startNum + i;
+            if (numPage <= totalPages) {
+                const pageLink = document.createElement('a');
+                pageLink.href = '#';
+                pageLink.textContent = numPage;
+                if (numPage === page) pageLink.className = 'current';
+                pageLink.onclick = e => { e.preventDefault(); goToPage(numPage); };
+                controls.push(pageLink);
+            } else {
+                const filler = document.createElement('span');
+                filler.textContent = '...';
+                filler.className = 'filler';
+                controls.push(filler);
+            }
+        }
+
+        const next = document.createElement('a');
+        next.href = '#';
+        next.textContent = 'Next ›';
+        next.className = page === totalPages ? 'disabled' : '';
+        if (page < totalPages) next.onclick = e => { e.preventDefault(); goToPage(page + 1); };
+        controls.push(next);
+
+        const last = document.createElement('a');
+        last.href = '#';
+        last.textContent = 'Last »';
+        last.className = page === totalPages ? 'disabled' : '';
+        if (page !== totalPages) last.onclick = e => { e.preventDefault(); goToPage(totalPages); };
+        controls.push(last);
+
+        controls.forEach(c => container.appendChild(c));
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderPage(currentPage);
+    }
+
+    document.getElementById('search-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const query = document.getElementById('search-input').value.toLowerCase();
+        towns = sortTowns(results
+            .filter(r => r.card.dataset.name.toLowerCase().includes(query))
+            .map(r => ({ name: r.card.dataset.name, element: r.card, hasFlag: r.hasFlag }))
+        );
+        currentPage = 1;
+        renderPage(currentPage);
+    });
+
+    towns = sortTowns(towns);
+    renderPage(currentPage);
+
+    gridContainer.style.visibility = 'visible';
+});
+</script>
 
 {% endblock %}
