@@ -4,207 +4,363 @@
 {% block content %}
 <a href="/nations" class="back-link">← Back to Nations</a>
 
-<div class="town-profile-container">
-    <div class="town-header">
-        <h1>{{ data.name }}</h1>
-        {% if data.board %}<div class="small">{{ data.board }}</div>{% endif %}
+<div class="detail-header">
+    <h1>{{ data.name }}</h1>
+    {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
+    <div class="stats-bar">
+        <span>👥 {{ data.stats.numResidents }} residents</span>
+        <span class="stats-sep">·</span>
+        <span>🏘️ {{ data.stats.numTowns }} towns</span>
+        <span class="stats-sep">·</span>
+        <span>📅 Since {{ (data.timestamps.registered / 1000) | datetimeformat }}</span>
     </div>
+</div>
 
-    <div class="town-body">
-        <!-- Left: Map -->
-        <div class="map-container">
-            {% if data
-               and data.coordinates
-               and data.coordinates.spawn
+<div class="detail-body">
+    <!-- Left: Map + Flag -->
+    <div class="detail-left">
+        <div class="map-frame">
+            {% if data.coordinates and data.coordinates.spawn
                and data.coordinates.spawn.x is not none
                and data.coordinates.spawn.z is not none %}
-            <iframe 
+            <iframe
                 src="https://earthpol.com/map/#world:{{ data.coordinates.spawn.x | round(0, 'floor') }}:0:{{ data.coordinates.spawn.z | round(0, 'floor') }}:300:0:0:0:1:flat"
-                width="100%"
-                height="100%"
-                style="border:0;"
-                allowfullscreen
-                loading="lazy">
+                width="100%" height="100%" style="border:0;" allowfullscreen loading="lazy">
             </iframe>
             {% else %}
-            <p>No spawn set.</p>
+            <div class="no-map">No spawn set</div>
             {% endif %}
-
-            <br><br><br>
+        </div>
+        <div class="flag-card" id="flag-card">
             <img loading="lazy"
-                 src="https://cdn.earthpol.com/nations/{{ data.name }}.png"
+                 src="https://cdn.earthpol.com/nations/{{ data.name.replace(' ', '_') }}.png"
                  alt="{{ data.name }} flag"
-                 style="width: 100%; height: auto; max-height: 300px; object-fit: contain;"
-                 onerror="this.style.display='none'; document.querySelector('.abcdefg').style.display='none';">
-            <p style="text-align: center;" class="abcdefg"><em>{{ data.name }}'s Flag</em></p>
+                 style="width:100%; height:auto; max-height:220px; object-fit:contain;"
+                 onerror="document.getElementById('flag-card').style.display='none';">
+            <p class="flag-label">{{ data.name }}'s Flag</p>
+        </div>
+    </div>
+
+    <!-- Right: Info -->
+    <div class="detail-right">
+
+        <div class="section">
+            <h2>👑 Leadership</h2>
+            <div class="leader-row">
+                <img src="https://api.mineatar.io/head/{{ data.king.uuid }}?scale=4&overlay=true"
+                     alt="{{ data.king.name }}">
+                <div>
+                    <div class="leader-label">King</div>
+                    <a href="/players/{{ data.king.uuid }}">{{ data.king.name }}</a>
+                </div>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Capital</span>
+                <a href="/towns/{{ data.capital.uuid }}">{{ data.capital.name }}</a>
+            </div>
+            {% if data.discord %}
+            <div class="info-row">
+                <span class="info-label">Discord</span>
+                <a href="{{ data.discord }}">{{ data.discord }}</a>
+            </div>
+            {% endif %}
         </div>
 
-        <!-- Right: Info -->
-        <div class="info-container">
-            <div class="section">
-                <h2>Timestamps</h2>
-                <p>Registered: {{ (data.timestamps.registered / 1000) | datetimeformat }}</p>
+        <div class="section">
+            <h2>⚡ Status</h2>
+            <div class="pill-row">
+                <span class="pill {{ 'pill-on' if data.status.isOpen else 'pill-off' }}">Open</span>
+                <span class="pill {{ 'pill-on' if data.status.isNeutral else 'pill-off' }}">Neutral</span>
+                <span class="pill {{ 'pill-on' if data.status.isPublic else 'pill-off' }}">Public</span>
             </div>
+        </div>
 
+        <div class="relations-row">
             <div class="section">
-                <h2>Leadership</h2>
-                <p>King: 
-                    <img src="https://api.mineatar.io/head/{{ data.king.uuid }}?scale=4&overlay=true" alt="{{ data.king.name }} head">
-                    <a href="/players/{{ data.king.uuid }}">{{ data.king.name }}</a>
-                </p>
-                <p>Capital: <a href="/towns/{{ data.capital.uuid }}">{{ data.capital.name }}</a></p>
-                <p>Discord: 
-                    {% if data.discord %}
-                        <a href="{{ data.discord }}">{{ data.discord }}</a>
-                    {% else %}
-                        None
-                    {% endif %}
-                </p>
-            </div>
-
-            <div class="section">
-                <h2>Status</h2>
-                <p>
-                    Open: {{ 'Yes' if data.status.isOpen else 'No' }}, 
-                    Neutral: {{ 'Yes' if data.status.isNeutral else 'No' }}, 
-                    Public: {{ 'Yes' if data.status.isPublic else 'No' }}
-                </p>
-            </div>
-
-            <div class="section">
-                <h2>Residents ({{ data.stats.numResidents }})</h2>
-                {% if data.residents %}
-                    {% set display = data.residents[:50] %}
-                    {% for r in display %}
-                        <a href="/players/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
-                    {% endfor %}
-                    {% if data.residents|length > 50 %}, ...{% endif %}
-                {% else %}
-                    None
-                {% endif %}
-            </div>
-
-            <div class="section">
-                <h2>Towns ({{ data.stats.numTowns }})</h2>
-                {% if data.residents %}
-                    {% set display = data.towns[:50] %}
-                    {% for r in display %}
-                        <a href="/towns/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
-                    {% endfor %}
-                    {% if data.towns|length > 50 %}, ...{% endif %}
-                {% else %}
-                    None
-                {% endif %}
-            </div>
-
-            <div class="section">
-                <h2>Allies ({{ data.allies|length }})</h2>
+                <h2>🤝 Allies <span class="count">{{ data.allies|length }}</span></h2>
                 {% if data.allies %}
-                    {% set display = data.allies[:10] %}
-                    {% for t in display %}
+                    {% for t in data.allies[:10] %}
                         <a href="/nations/{{ t.uuid }}">{{ t.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
-                    {% if data.allies|length > 10 %}, ...{% endif %}
+                    {% if data.allies|length > 10 %}, …{% endif %}
                 {% else %}
-                    None
+                    <span class="none-text">None</span>
                 {% endif %}
             </div>
-
             <div class="section">
-                <h2>Enemies ({{ data.enemies|length }})</h2>
+                <h2>⚔️ Enemies <span class="count">{{ data.enemies|length }}</span></h2>
                 {% if data.enemies %}
-                    {% set display = data.enemies[:10] %}
-                    {% for o in display %}
+                    {% for o in data.enemies[:10] %}
                         <a href="/nations/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
-                    {% if data.enemies|length > 10 %}, ...{% endif %}
+                    {% if data.enemies|length > 10 %}, …{% endif %}
                 {% else %}
-                    None
+                    <span class="none-text">None</span>
                 {% endif %}
             </div>
-            
             <div class="section">
-                <h2>Sanctioned ({{ data.sanctioned|length }})</h2>
+                <h2>🚫 Sanctioned <span class="count">{{ data.sanctioned|length }}</span></h2>
                 {% if data.sanctioned %}
-                    {% set display = data.sanctioned[:10] %}
-                    {% for o in display %}
+                    {% for o in data.sanctioned[:10] %}
                         <a href="/nations/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
                     {% endfor %}
-                    {% if data.sanctioned|length > 10 %}, ...{% endif %}
+                    {% if data.sanctioned|length > 10 %}, …{% endif %}
                 {% else %}
-                    None
+                    <span class="none-text">None</span>
                 {% endif %}
-            </div>
-
-            <div class="section">
-                <h2>Ranks</h2>
-                {% for rank, members in data.ranks.items() %}
-                    {% if members %}
-                        <strong>{{ rank | capitalize }} ({{ members|length }}):</strong>
-                        {% set display = members[:10] %}
-                        {% for m in display %}
-                            <a href="/players/{{ m.uuid }}">{{ m.name }}</a>{% if not loop.last %}, {% endif %}
-                        {% endfor %}
-                        {% if members|length > 10 %}, ...{% endif %}
-                        <br>
-                    {% endif %}
-                {% endfor %}
             </div>
         </div>
+
+        <div class="section">
+            <h2>👥 Residents <span class="count">{{ data.stats.numResidents }}</span></h2>
+            {% if data.residents %}
+                {% for r in data.residents[:50] %}
+                    <a href="/players/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                {% if data.residents|length > 50 %}, …{% endif %}
+            {% else %}
+                <span class="none-text">None</span>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <h2>🏘️ Towns <span class="count">{{ data.stats.numTowns }}</span></h2>
+            {% if data.towns %}
+                {% for r in data.towns[:50] %}
+                    <a href="/towns/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                {% if data.towns|length > 50 %}, …{% endif %}
+            {% else %}
+                <span class="none-text">None</span>
+            {% endif %}
+        </div>
+
+        {% set has_ranks = namespace(value=false) %}
+        {% for rank, members in data.ranks.items() %}{% if members %}{% set has_ranks.value = true %}{% endif %}{% endfor %}
+        {% if has_ranks.value %}
+        <div class="section">
+            <h2>🎖️ Ranks</h2>
+            {% for rank, members in data.ranks.items() %}
+                {% if members %}
+                    <div class="rank-row">
+                        <span class="rank-name">{{ rank | capitalize }}</span>
+                        <span class="rank-members">
+                            {% for m in members[:10] %}
+                                <a href="/players/{{ m.uuid }}">{{ m.name }}</a>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                            {% if members|length > 10 %}, …{% endif %}
+                        </span>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
     </div>
 </div>
 
 <style>
-.town-profile-container {
-    max-width: 2000px;
-    margin: 20px auto;
-    font-family: Arial, sans-serif;
-    color: #e0e0e0;
-}
-.town-header h1 {
-    font-size: 36px;
-    margin: 0;
-}
-.town-header .small {
-    font-size: 0.9em;
-    color: #aaa;
+.detail-header {
     text-align: center;
+    margin-bottom: 28px;
 }
-.town-body {
+.detail-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0 0 6px;
+}
+.board-text {
+    color: #888;
+    font-size: 14px;
+    margin: 0 0 10px;
+}
+.stats-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #777;
+    font-size: 13.5px;
+    background: #181818;
+    border: 1px solid #252525;
+    padding: 7px 18px;
+    border-radius: 20px;
+}
+.stats-sep { color: #333; }
+
+.detail-body {
     display: flex;
     gap: 20px;
-    margin-top: 20px;
+    align-items: flex-start;
 }
-.map-container {
-    flex: 10;
-    height: 600px;
-}
-.info-container {
-    flex: 13;
+.detail-left {
+    flex: 0 0 380px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
 }
+.map-frame {
+    width: 100%;
+    height: 340px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #252525;
+}
+.no-map {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-size: 14px;
+    background: #181818;
+}
+.flag-card {
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+}
+.flag-label {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+}
+
+.detail-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
 .section {
-    background-color: #2e2e2e;
-    padding: 15px;
-    border-radius: 8px;
+    background: #181818;
+    border: 1px solid #252525;
+    padding: 14px 16px;
+    border-radius: 10px;
 }
 .section h2 {
-    margin-top: 0;
-    font-size: 18px;
-    border-bottom: 1px solid #444;
-    padding-bottom: 5px;
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.section h2 .count {
+    font-size: 12px;
+    background: #252525;
+    color: #888;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.leader-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 10px;
 }
-.section img {
-    width: 32px;
-    height: 32px;
-    vertical-align: middle;
-    margin-right: 5px;
-    border-radius: 4px;
+.leader-row img {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    image-rendering: pixelated;
 }
-a { color: #4da6ff; text-decoration: none; }
-a:hover { color: #80c1ff; }
+.leader-label {
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.leader-row a {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 14px;
+}
+.info-label {
+    color: #666;
+    font-size: 12px;
+    min-width: 52px;
+}
+
+.pill-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.pill-on {
+    background: rgba(37, 99, 235, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(37, 99, 235, 0.3);
+}
+.pill-off {
+    background: transparent;
+    color: #444;
+    border: 1px solid #2a2a2a;
+}
+
+.relations-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+}
+.relations-row .section {
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.none-text {
+    color: #555;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.rank-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    align-items: baseline;
+}
+.rank-name {
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+.rank-members { line-height: 1.7; }
+
+a { color: #4da6ff; text-decoration: none; font-size: inherit; }
+a:hover { color: #7dc0ff; }
+
+@media (max-width: 900px) {
+    .detail-body { flex-direction: column; }
+    .detail-left { flex: none; width: 100%; }
+    .relations-row { grid-template-columns: 1fr; }
+}
 </style>
 {% endblock %}
