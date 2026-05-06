@@ -322,5 +322,31 @@
     <div class="page-wrapper">
         {% block content %}{% endblock %}
     </div>
+    <script>
+    function generateFlagSVG(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = (hash << 5) - hash + name.charCodeAt(i);
+            hash |= 0;
+        }
+        const hue  = Math.abs(hash) % 360;
+        const hue2 = (hue + 40) % 360;
+        const fontSize = name.length > 18 ? 10 : name.length > 12 ? 13 : 16;
+        const escaped = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="hsl(${hue},45%,22%)"/>
+      <stop offset="100%" stop-color="hsl(${hue2},50%,28%)"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="100" fill="url(#g)"/>
+  <rect y="37" width="200" height="26" fill="rgba(0,0,0,0.18)"/>
+  <text x="100" y="50" font-family="Inter,Arial,sans-serif" font-size="${fontSize}" font-weight="600"
+        fill="rgba(255,255,255,0.88)" text-anchor="middle" dominant-baseline="middle">${escaped}</text>
+</svg>`;
+        return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    }
+    </script>
 </body>
 </html>

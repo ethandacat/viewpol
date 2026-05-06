@@ -19,7 +19,7 @@
                  src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
                  alt="{{ town.name }} flag"
                  style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
-                 onerror="this.style.display='none';">
+                 onerror="this.onerror=null;this.src=generateFlagSVG(this.closest('[data-name]').dataset.name);">
             <a href="/towns/{{ town.uuid }}" style="display: block; text-align: center;">{{ town.name }}</a>
         </div>
         {% endfor %}

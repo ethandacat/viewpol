@@ -36,7 +36,8 @@
                  src="https://cdn.earthpol.com/towns/{{ data.name.replace(' ', '_') }}.png"
                  alt="{{ data.name }} flag"
                  style="width:100%; height:auto; max-height:220px; object-fit:contain;"
-                 onerror="document.getElementById('flag-card').style.display='none';">
+                 data-name="{{ data.name }}"
+                 onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.name);">
             <p class="flag-label">{{ data.name }}'s Flag</p>
         </div>
     </div>

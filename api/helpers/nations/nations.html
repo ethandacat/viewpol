@@ -19,7 +19,7 @@
                  src="https://cdn.earthpol.com/nations/{{ n.name.replace(' ', '_') }}.png"
                  alt="{{ n.name }} flag"
                  style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
-                 onerror="this.style.display='none';">
+                 onerror="this.onerror=null;this.src=generateFlagSVG(this.closest('[data-name]').dataset.name);">
             <a href="/nations/{{ n.uuid }}" style="display: block; text-align: center;">{{ n.name }}</a>
         </div>
         {% endfor %}
