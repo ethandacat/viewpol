@@ -45,15 +45,13 @@
     <!-- Right: Info -->
     <div class="detail-right">
 
-        <div class="section">
-            <h2>👑 Leadership</h2>
-            <div class="leader-row">
-                <img src="https://api.mineatar.io/head/{{ data.king.uuid }}?scale=4&overlay=true"
-                     alt="{{ data.king.name }}">
-                <div>
-                    <div class="leader-label">King</div>
-                    <a href="/players/{{ data.king.uuid }}">{{ data.king.name }}</a>
-                </div>
+        <div class="section leadership-section">
+            <img class="leader-bust"
+                 src="https://vzge.me/bust/156/{{ data.king.name }}"
+                 alt="{{ data.king.name }}">
+            <div class="leader-identity">
+                <a href="/players/{{ data.king.uuid }}" class="leader-name">{{ data.king.name }}</a>
+                <span class="leader-role">King</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Capital</span>
@@ -265,27 +263,40 @@
     letter-spacing: 0;
 }
 
-.leader-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+.leadership-section {
+    position: relative;
+    padding-top: 80px;
+    margin-top: 70px;
 }
-.leader-row img {
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
+.leader-bust {
+    position: absolute;
+    top: -70px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
     image-rendering: pixelated;
+    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6));
 }
-.leader-label {
+.leader-identity {
+    text-align: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #252525;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.leader-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #f0f0f0 !important;
+}
+.leader-name:hover { color: #7dc0ff !important; }
+.leader-role {
     font-size: 11px;
-    color: #666;
+    color: #555;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-}
-.leader-row a {
-    font-size: 15px;
-    font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
 .info-row {
