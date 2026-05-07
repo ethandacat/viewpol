@@ -30,6 +30,63 @@ def sieges_page():
     )
 
 
+def _opposite(side):
+    return "Defender" if side.upper() == "ATTACKER" else "Attacker"
+
+
+def _process_sessions(raw_sessions):
+    out = []
+    for bs in raw_sessions:
+        events = []
+        for k in bs.get("kills", []):
+            killer_side = k["killer"]["side"]
+            victim_side = k["victim"]["side"]
+            if killer_side.upper() == "NOBODY":
+                events.append({
+                    "type": "kill",
+                    "timestamp": k.get("timestamp", 0),
+                    "text_parts": {
+                        "victim": k["victim"]["name"],
+                        "victim_side": victim_side.capitalize(),
+                        "netting_side": _opposite(victim_side),
+                        "points": k.get("points", 0),
+                        "natural_death": True,
+                    },
+                })
+            else:
+                events.append({
+                    "type": "kill",
+                    "timestamp": k.get("timestamp", 0),
+                    "text_parts": {
+                        "killer": k["killer"]["name"],
+                        "killer_side": killer_side.capitalize(),
+                        "victim": k["victim"]["name"],
+                        "netting_side": killer_side.capitalize(),
+                        "points": k.get("points", 0),
+                        "natural_death": False,
+                    },
+                })
+        for bc in bs.get("bannerControl", []):
+            side = bc["awardingSide"].capitalize()
+            events.append({
+                "type": "banner",
+                "timestamp": bc.get("timestamp", 0),
+                "text_parts": {
+                    "side": side,
+                    "controllers": bc.get("controllersCount", 0),
+                    "points": bc.get("points", 0),
+                },
+            })
+        events.sort(key=lambda e: e["timestamp"])
+        out.append({
+            "sessionNumber": bs.get("sessionNumber", 0),
+            "startedAtMillis": bs.get("startedAtMillis"),
+            "endedAtMillis": bs.get("endedAtMillis"),
+            "events": events,
+        })
+    return out
+
+
 @app.route("/sieges/<name>")
 def siege_page(name):
     data = load_sieges()
@@ -40,4 +97,5 @@ def siege_page(name):
     )
     if siege is None:
         return "", 404
-    return render_template("siege.html", siege=siege)
+    battle_sessions = _process_sessions(siege.get("battleSessions") or [])
+    return render_template("siege.html", siege=siege, battle_sessions=battle_sessions)

@@ -67,48 +67,51 @@
 </div>
 
 <!-- Battle Sessions -->
-{% if siege.battleSessions and siege.battleSessions | length > 0 %}
+{% if battle_sessions %}
 <h2 style="font-size:15px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin:32px 0 14px;">
-    Battle Sessions <span style="font-size:12px;background:#252525;color:#888;padding:1px 8px;border-radius:10px;font-weight:500;text-transform:none;letter-spacing:0;">{{ siege.battleSessions | length }}</span>
+    Battle Sessions <span style="font-size:12px;background:#252525;color:#888;padding:1px 8px;border-radius:10px;font-weight:500;text-transform:none;letter-spacing:0;">{{ battle_sessions | length }}</span>
 </h2>
 <div class="sessions-list">
-    {% for session in siege.battleSessions %}
+    {% for session in battle_sessions %}
     <div class="session-card">
         <div class="session-header">
-            <span class="session-num">Session {{ loop.index }}</span>
+            <span class="session-num">Session {{ session.sessionNumber }}</span>
+            {% if session.startedAtMillis %}
+            <span class="session-time" data-ms="{{ session.startedAtMillis }}"></span>
+            {% endif %}
         </div>
 
-        {% if session.kills and session.kills | length > 0 %}
-        <div class="session-section-label">Kills</div>
-        <div class="kills-list">
-            {% for kill in session.kills %}
-            <div class="kill-row">
-                <span class="kill-attacker">{{ kill.attacker }}</span>
-                <span class="kill-arrow">→</span>
-                <span class="kill-victim">{{ kill.victim }}</span>
-                {% if kill.isAttackerSide is defined %}
-                <span class="kill-side {% if kill.isAttackerSide %}side-att{% else %}side-def{% endif %}">
-                    {{ "ATK" if kill.isAttackerSide else "DEF" }}
+        {% if session.events %}
+        <div class="events-list">
+            {% for ev in session.events %}
+            {% if ev.type == "kill" %}
+            {% set p = ev.text_parts %}
+            <div class="event-row event-kill {% if p.netting_side == 'Attacker' %}att{% else %}def{% endif %}">
+                <span class="ev-icon">☠</span>
+                <span class="ev-text">
+                    {% if p.natural_death %}
+                    <b>{{ p.victim }}</b> <span class="ev-side side-{{ p.victim_side | lower }}">{{ p.victim_side }}</span> died
+                    {% else %}
+                    <b>{{ p.killer }}</b> <span class="ev-side side-{{ p.killer_side | lower }}">{{ p.killer_side }}</span> killed <b>{{ p.victim }}</b>
+                    {% endif %}
+                    at <span class="ev-time" data-ms="{{ ev.timestamp }}"></span>
+                    netting <span class="ev-side side-{{ p.netting_side | lower }}">{{ p.netting_side }}</span> <b>{{ p.points }}</b> points.
                 </span>
-                {% endif %}
             </div>
+            {% elif ev.type == "banner" %}
+            {% set p = ev.text_parts %}
+            <div class="event-row event-banner {% if p.side == 'Attacker' %}att{% else %}def{% endif %}">
+                <span class="ev-icon">🚩</span>
+                <span class="ev-text">
+                    <span class="ev-side side-{{ p.side | lower }}">{{ p.side }}</span> has taken control of the banner
+                    with <b>{{ p.controllers }}</b> controller{{ "s" if p.controllers != 1 else "" }}
+                    netting <span class="ev-side side-{{ p.side | lower }}">{{ p.side }}</span> <b>{{ p.points }}</b> points.
+                </span>
+            </div>
+            {% endif %}
             {% endfor %}
         </div>
-        {% endif %}
-
-        {% if session.bannerControl and session.bannerControl | length > 0 %}
-        <div class="session-section-label" style="margin-top:10px;">Banner Control</div>
-        <div class="banner-list">
-            {% for event in session.bannerControl %}
-            <div class="banner-row {% if event.isAttackerSide %}att{% else %}def{% endif %}">
-                <span class="banner-player">{{ event.player }}</span>
-                <span class="banner-side">{{ "Attacker" if event.isAttackerSide else "Defender" }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if (not session.kills or session.kills | length == 0) and (not session.bannerControl or session.bannerControl | length == 0) %}
+        {% else %}
         <div style="font-size:12px;color:#555;font-style:italic;">No recorded events.</div>
         {% endif %}
     </div>
@@ -182,47 +185,31 @@
     padding: 14px 16px;
 }
 .session-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.session-num { font-size: 13px; font-weight: 700; color: #aaa; }
-.session-section-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.session-num  { font-size: 13px; font-weight: 700; color: #aaa; }
+.session-time { font-size: 12px; color: #555; }
 
-.kills-list { display: flex; flex-direction: column; gap: 4px; }
-.kill-row {
+.events-list { display: flex; flex-direction: column; gap: 4px; }
+.event-row {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 8px;
     font-size: 13px;
-    padding: 4px 8px;
-    background: #141414;
-    border-radius: 6px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    color: #bbb;
+    line-height: 1.5;
 }
-.kill-attacker { color: #f87171; font-weight: 500; }
-.kill-arrow    { color: #444; }
-.kill-victim   { color: #aaa; }
-.kill-side {
-    margin-left: auto;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 6px;
-    text-transform: uppercase;
-}
-.kill-side.side-att { background: rgba(239,68,68,0.15); color: #f87171; }
-.kill-side.side-def { background: rgba(96,165,250,0.15); color: #60a5fa; }
-
-.banner-list { display: flex; flex-direction: column; gap: 4px; }
-.banner-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 13px;
-}
-.banner-row.att { background: rgba(239,68,68,0.08); }
-.banner-row.def { background: rgba(96,165,250,0.08); }
-.banner-player { color: #e0e0e0; font-weight: 500; }
-.banner-row.att .banner-side { font-size: 11px; color: #f87171; font-weight: 600; }
-.banner-row.def .banner-side { font-size: 11px; color: #60a5fa; font-weight: 600; }
+.event-row.event-kill.att  { background: rgba(239,68,68,0.07); }
+.event-row.event-kill.def  { background: rgba(96,165,250,0.07); }
+.event-row.event-banner.att { background: rgba(239,68,68,0.04); }
+.event-row.event-banner.def { background: rgba(96,165,250,0.04); }
+.ev-icon { flex-shrink: 0; font-size: 12px; opacity: 0.6; }
+.ev-text b { color: #e0e0e0; }
+.ev-side { font-weight: 600; }
+.ev-side.side-attacker { color: #f87171; }
+.ev-side.side-defender { color: #60a5fa; }
+.ev-side.side-nobody   { color: #666; }
+.ev-time { color: #666; font-size: 12px; }
 
 @media (max-width: 700px) {
     .matchup-row { grid-template-columns: 1fr; }
@@ -231,13 +218,19 @@
 </style>
 
 <script>
-function fmtTime(ms) {
+function fmtDateTime(ms) {
     const d = new Date(ms);
     return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) +
            ' ' + d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
 }
+function fmtTimeOnly(ms) {
+    return new Date(ms).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
 document.querySelectorAll('[data-ms]').forEach(el => {
-    el.textContent = fmtTime(parseInt(el.dataset.ms));
+    el.textContent = fmtDateTime(parseInt(el.dataset.ms));
+});
+document.querySelectorAll('.ev-time[data-ms]').forEach(el => {
+    el.textContent = fmtTimeOnly(parseInt(el.dataset.ms));
 });
 </script>
 {% endblock %}
