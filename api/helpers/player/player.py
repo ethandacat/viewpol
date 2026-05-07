@@ -30,7 +30,12 @@ def player(uuid):
         return "", 404
 
     sreq = requests.post("https://api.earthpol.com/astra/shops", json={"query": [uuid]})
-    shops = sreq.json() if sreq.status_code == 200 else []
+    shops_raw = sreq.json() if sreq.status_code == 200 else []
+    # API may return [[...]] when queried by UUID
+    if shops_raw and isinstance(shops_raw[0], list):
+        shops = shops_raw[0]
+    else:
+        shops = [s for s in shops_raw if isinstance(s, dict)]
 
     for n in shops:
         n["item"] = itemstack.parse(n["item"])
