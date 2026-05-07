@@ -403,6 +403,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const PAGES = {{ (data.item.meta.pages | tojson) if (data.item.meta_type and 'BOOK' in data.item.meta_type and data.item.meta.pages) else '[]' }};
         let currentPage = 0;
 
+        function stripCodes(s) {
+            return s.replace(/§[0-9a-fk-orA-FK-OR]/g, '');
+        }
+
         function extractText(p) {
             if (typeof p === 'string') {
                 try {
@@ -410,17 +414,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (obj && typeof obj === 'object') {
                         let text = obj.text || '';
                         if (obj.extra) obj.extra.forEach(e => { text += (typeof e === 'object' ? e.text || '' : e); });
-                        return text;
+                        return stripCodes(text);
                     }
                 } catch (_) {}
-                return p;
+                return stripCodes(p);
             }
             if (p && typeof p === 'object') {
                 let text = p.text || '';
                 if (p.extra) p.extra.forEach(e => { text += (typeof e === 'object' ? e.text || '' : e); });
-                return text;
+                return stripCodes(text);
             }
-            return String(p ?? '');
+            return stripCodes(String(p ?? ''));
         }
 
         function showPage(n) {
