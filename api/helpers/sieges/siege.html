@@ -104,7 +104,7 @@
                 <span class="ev-icon">🚩</span>
                 <span class="ev-text">
                     <span class="ev-side side-{{ p.side | lower }}">{{ p.side }}</span> has taken control of the banner
-                    with <b>{{ p.controllers }}</b> controller{{ "s" if p.controllers != 1 else "" }}
+                    {% if p.count > 1 %}<b>{{ p.count }}</b> times {% endif %}with <b>{{ p.controllers }}</b> controller{{ "s" if p.controllers != 1 else "" }}
                     netting <span class="ev-side side-{{ p.side | lower }}">{{ p.side }}</span> <b>{{ p.points }}</b> points.
                 </span>
             </div>

@@ -78,11 +78,26 @@ def _process_sessions(raw_sessions):
                 },
             })
         events.sort(key=lambda e: e["timestamp"])
+
+        # Compress consecutive banner events with the same side + controller count
+        compressed = []
+        for ev in events:
+            if (ev["type"] == "banner" and compressed and
+                    compressed[-1]["type"] == "banner" and
+                    compressed[-1]["text_parts"]["side"] == ev["text_parts"]["side"] and
+                    compressed[-1]["text_parts"]["controllers"] == ev["text_parts"]["controllers"]):
+                compressed[-1]["text_parts"]["points"] += ev["text_parts"]["points"]
+                compressed[-1]["text_parts"]["count"] += 1
+            else:
+                if ev["type"] == "banner":
+                    ev["text_parts"]["count"] = 1
+                compressed.append(ev)
+
         out.append({
             "sessionNumber": bs.get("sessionNumber", 0),
             "startedAtMillis": bs.get("startedAtMillis"),
             "endedAtMillis": bs.get("endedAtMillis"),
-            "events": events,
+            "events": compressed,
         })
     return out
 
