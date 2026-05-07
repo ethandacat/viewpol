@@ -5,6 +5,11 @@
 <a href="/nations" class="back-link">← Back to Nations</a>
 
 <div class="detail-header">
+    <img class="header-flag"
+         src="https://cdn.earthpol.com/nations/{{ data.name.replace(' ', '_') }}.png"
+         alt="{{ data.name }} flag"
+         data-name="{{ data.name }}"
+         onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.name);">
     <h1>{{ data.name }}</h1>
     {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
     <div class="stats-bar">
@@ -30,15 +35,6 @@
             {% else %}
             <div class="no-map">No spawn set</div>
             {% endif %}
-        </div>
-        <div class="flag-card" id="flag-card">
-            <img loading="lazy"
-                 src="https://cdn.earthpol.com/nations/{{ data.name.replace(' ', '_') }}.png"
-                 alt="{{ data.name }} flag"
-                 style="width:100%; height:auto; max-height:220px; object-fit:contain;"
-                 data-name="{{ data.name }}"
-                 onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.name);">
-            <p class="flag-label">{{ data.name }}'s Flag</p>
         </div>
     </div>
 
@@ -163,6 +159,17 @@
 .detail-header {
     text-align: center;
     margin-bottom: 28px;
+}
+.header-flag {
+    width: 120px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #252525;
+    margin-bottom: 12px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 .detail-header h1 {
     font-size: 32px;
