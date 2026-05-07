@@ -14,6 +14,41 @@ requests.headers.update({
 # -------------------------
 # TYPE NORMALIZATION LAYER
 # -------------------------
+def _title_case(s: str) -> str:
+    """Matches shops.html titleCase: lowercase then capitalize each word."""
+    return s.lower().replace("_", " ").title()
+
+
+def get_display_name(item: dict) -> str:
+    """Exact equivalent of shops.html createCard display name logic."""
+    raw_item_id = item.get("item") if isinstance(item.get("item"), str) else "unknown"
+    meta = item.get("meta")
+    raw_name = None
+    if meta:
+        dn = meta.get("display-name")
+        if isinstance(dn, dict):
+            extra = dn.get("extra") or []
+            if extra and isinstance(extra[0], dict) and isinstance(extra[0].get("text"), str):
+                raw_name = extra[0]["text"]
+    if not raw_name:
+        raw_name = raw_item_id.replace("_", " ")
+    return _title_case(raw_name or "Unknown Item")
+
+
+def get_name_color(item: dict) -> str:
+    meta = item.get("meta")
+    if not meta:
+        return "#FFFFFF"
+    dn = meta.get("display-name")
+    if isinstance(dn, dict):
+        extra = dn.get("extra") or []
+        if extra and isinstance(extra[0], dict) and extra[0].get("text"):
+            return "#FF55FF"
+    if meta.get("enchants") or meta.get("stored-enchants"):
+        return "#55FFFF"
+    return "#FFFFFF"
+
+
 def normalize_shop_type(raw) -> str:
     if raw is None:
         return "UNKNOWN"
@@ -69,8 +104,13 @@ def shop(id):
     except Exception:
         pass
 
+    display_name = get_display_name(reqdata["item"])
+    name_color   = get_name_color(reqdata["item"])
+
     return render_template(
         "shop.html",
         data=reqdata,
-        username=username
+        username=username,
+        display_name=display_name,
+        name_color=name_color,
     )
