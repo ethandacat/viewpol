@@ -21,7 +21,10 @@
 
 {% if data.item.meta and data.item.meta['display-name'] and data.item.meta['display-name'].extra and data.item.meta['display-name'].extra|length > 0 %}
     {% set display_name = data.item.meta['display-name'].extra[0].text %}
-    {% set name_color   = MINECRAFT_COLORS.get(data.item.meta['display-name'].extra[0].color, '#FFFFFF') %}
+    {% set name_color   = '#FF55FF' %}
+{% elif data.item.meta and (data.item.meta.enchants or data.item.meta['stored-enchants']) %}
+    {% set display_name = data.item.item.replace('_', ' ')|title %}
+    {% set name_color   = '#55FFFF' %}
 {% else %}
     {% set display_name = data.item.item.replace('_', ' ')|title %}
     {% set name_color   = '#FFFFFF' %}
@@ -51,17 +54,14 @@
 
         <div class="mc-tooltip">
             <p class="mc-name" style="color:{{ name_color }};">{{ display_name }}</p>
-            <p class="mc-id" style="margin-bottom:2px;">minecraft:{{ data.item.item|lower }}</p>
 
             {% if all_enchants %}
-                <div class="mc-divider"></div>
                 {% for ench, lvl in all_enchants.items() %}
                     <p class="mc-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</p>
                 {% endfor %}
             {% endif %}
 
             {% if data.item.meta and data.item.meta.lore %}
-                <div class="mc-divider"></div>
                 {% for line in data.item.meta.lore %}
                     <p class="mc-lore-line">
                     {% if line.extra %}
@@ -74,6 +74,7 @@
             {% endif %}
         </div>
     </div>
+    <p class="item-id-sub">minecraft:{{ data.item.item|lower }}</p>
 
     <h1>{{ display_name }}</h1>
     <div class="stats-bar">
@@ -234,12 +235,9 @@
     text-align: left;
     white-space: nowrap;
 
-    /* Gradient border: top #5000FF → bottom #28007F, with dark outer frame */
-    background:
-        linear-gradient(#100010, #100010) padding-box,
-        linear-gradient(180deg, #5000FF 0%, #28007F 100%) border-box;
-    border: 2px solid transparent;
-    box-shadow: 0 0 0 1px #0d000d, inset 0 0 0 1px #0d000d;
+    background: rgba(70, 70, 70, 0.88);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
 }
 
 .mc-name {
@@ -251,7 +249,7 @@
 .mc-enchant {
     font-family: 'Minecraftia', monospace;
     font-size: 14px;
-    color: #7F7FFF;
+    color: #AAAAAA;
     margin: 2px 0;
     line-height: 1.4;
 }
@@ -261,18 +259,12 @@
     margin: 2px 0;
     line-height: 1.4;
 }
-.mc-id {
+.item-id-sub {
     font-family: 'Minecraftia', monospace;
     font-size: 11px;
     color: #555;
-    margin: 0 0 2px;
+    margin: 0 0 14px;
     line-height: 1.4;
-}
-.mc-divider {
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #5000c8 20%, #28007F 80%, transparent);
-    margin: 6px 0;
-    opacity: 0.8;
 }
 .mc-text {
     font-family: 'Minecraftia', monospace;
