@@ -15,9 +15,13 @@
         <span class="meta-value" id="session-remaining">{{ (time_remaining / 60000) | int }}m remaining</span>
     </div>
     {% elif time_till > 0 %}
+    {% set _s = (time_till / 1000) | int %}
+    {% set _d = (_s // 86400) %}
+    {% set _h = ((_s % 86400) // 3600) %}
+    {% set _m = ((_s % 3600) // 60) %}
     <div class="meta-pill">
         <span class="meta-label">Next Battle Session</span>
-        <span class="meta-value" id="session-till">in {{ (time_till / 60000) | int }}m</span>
+        <span class="meta-value">in {% if _d > 0 %}{{ _d }}d {% endif %}{% if _h > 0 or _d > 0 %}{{ _h }}h {% endif %}{{ _m }}m</span>
     </div>
     {% endif %}
 </div>
