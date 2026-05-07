@@ -9,9 +9,10 @@ session.headers.update({
     "Accept": "application/json",
 })
 
-VALID_SORTS = {"kills", "deaths", "assists", "damage", "damage_taken",
-               "best_killstreak", "current_killstreak", "bow_shots", "bow_hits"}
-PER_PAGE = 50
+API_SORTS = {"kills", "deaths", "assists", "damage", "damage_taken",
+             "best_killstreak", "current_killstreak", "bow_shots", "bow_hits"}
+ALL_SORTS  = API_SORTS | {"kd"}
+PER_PAGE   = 50
 
 
 @app.route("/kitpvp")
@@ -20,23 +21,30 @@ def kitpvp_page():
     order = request.args.get("order", "desc")
     page  = max(1, int(request.args.get("page", 1)))
 
-    if sort not in VALID_SORTS:
+    if sort not in ALL_SORTS:
         sort = "kills"
     if order not in ("asc", "desc"):
         order = "desc"
 
     offset = (page - 1) * PER_PAGE
+    # K/D isn't an API field — fetch by kills then re-sort locally
+    api_sort = "kills" if sort == "kd" else sort
     resp = session.get(
         "https://earthpol.org/api/kitpvp/leaderboard",
-        params={"sort": sort, "order": order, "limit": PER_PAGE, "offset": offset},
+        params={"sort": api_sort, "order": order, "limit": PER_PAGE, "offset": offset},
     )
     data = resp.json()
     items = data.get("items", [])
     has_next = bool(data.get("nextCursor"))
 
-    for i, p in enumerate(items):
+    for p in items:
         d = p.get("deaths", 0)
         p["kd"] = round(p["kills"] / d, 2) if d else float(p["kills"])
+
+    if sort == "kd":
+        items.sort(key=lambda p: p["kd"], reverse=(order == "desc"))
+
+    for i, p in enumerate(items):
         p["rank"] = offset + i + 1
 
     return render_template(
