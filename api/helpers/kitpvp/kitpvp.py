@@ -17,10 +17,16 @@ def kitpvp_page():
 
 @app.route("/kitpvp/data")
 def kitpvp_data():
-    offset = max(0, int(request.args.get("offset", 0)))
+    params = {"sort": "kills", "order": "desc", "limit": 100}
+    cursor_value = request.args.get("cursorValue")
+    cursor_uuid  = request.args.get("cursorUuid")
+    if cursor_value and cursor_uuid:
+        params["cursorValue"] = cursor_value
+        params["cursorUuid"]  = cursor_uuid
+
     resp = session.get(
         "https://earthpol.org/api/kitpvp/leaderboard",
-        params={"sort": "kills", "order": "desc", "limit": 100, "offset": offset},
+        params=params,
         timeout=10,
     )
     data  = resp.json()
@@ -29,6 +35,6 @@ def kitpvp_data():
         d       = p.get("deaths", 0)
         p["kd"] = round(p["kills"] / d, 2) if d else float(p["kills"])
     return jsonify({
-        "items":   items,
-        "hasMore": bool(data.get("nextCursor")) and len(items) > 0,
+        "items":      items,
+        "nextCursor": data.get("nextCursor"),
     })

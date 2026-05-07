@@ -119,17 +119,20 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 
 async function loadAll() {
     const seen = new Set();
-    let offset  = 0;
+    let cursor  = null;
     while (true) {
-        const resp = await fetch(`/kitpvp/data?offset=${offset}`);
-        const data = await resp.json();
-        let added = 0;
+        const url  = cursor
+            ? `/kitpvp/data?cursorValue=${cursor.cursorValue}&cursorUuid=${encodeURIComponent(cursor.cursorUuid)}`
+            : '/kitpvp/data';
+        const data = await fetch(url).then(r => r.json());
+
         for (const p of data.items) {
-            if (!seen.has(p.uuid)) { seen.add(p.uuid); allPlayers.push(p); added++; }
+            if (!seen.has(p.uuid)) { seen.add(p.uuid); allPlayers.push(p); }
         }
-        offset += data.items.length;
         render();
-        if (!data.hasMore || data.items.length === 0) break;
+
+        if (!data.nextCursor || data.items.length === 0) break;
+        cursor = data.nextCursor;
         status.textContent = `Loaded ${allPlayers.length} players…`;
     }
     status.textContent = `${allPlayers.length} players`;
