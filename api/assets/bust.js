@@ -89,15 +89,25 @@
         const cam = new THREE.PerspectiveCamera(40, W / H, 0.1, 100);
 
         // Slight 3/4 angle — orbit ~12° to the right around Y
+        // dist=38 leaves breathing room around the model
         const orbitY = 0.21;
-        const dist = 32;
+        const dist = 38;
         cam.position.set(Math.sin(orbitY) * dist, 8, Math.cos(orbitY) * dist);
         cam.lookAt(0, 2, 0);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.75);
-        sun.position.set(6, 12, 8);
-        scene.add(sun);
+        // Key light (top-right-front)
+        scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+        const key = new THREE.DirectionalLight(0xffffff, 0.8);
+        key.position.set(6, 12, 8);
+        scene.add(key);
+        // Fill light (left, slightly warm)
+        const fill = new THREE.DirectionalLight(0xffd0a0, 0.35);
+        fill.position.set(-8, 4, 6);
+        scene.add(fill);
+        // Rim light (behind, cool — separates from background)
+        const rim = new THREE.DirectionalLight(0xa0c8ff, 0.25);
+        rim.position.set(2, 6, -10);
+        scene.add(rim);
 
         const tex = new THREE.CanvasTexture(skinImg);
         tex.magFilter = THREE.NearestFilter;
