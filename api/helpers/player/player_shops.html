@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}{{ player.name }}'s Shops | ViewPol{% endblock %}
+
+{% block content %}
+<a href="/players/{{ player.uuid }}" class="back-link">← Back to {{ player.name }}</a>
+
+<div class="detail-header" style="text-align:center; margin-bottom:28px;">
+    <img src="https://vzge.me/bust/{{ player.uuid }}"
+         alt="{{ player.name }}'s bust"
+         style="height:120px; width:auto; border-radius:8px; margin-bottom:12px; display:block; margin-left:auto; margin-right:auto;">
+    <h1>{{ player.name }}'s Shops</h1>
+    <p style="color:#666; font-size:13px; margin:0;">{{ shops|length }} shop{{ 's' if shops|length != 1 else '' }}</p>
+</div>
+
+{% if not shops %}
+<p style="text-align:center; color:#555; font-style:italic;">No shops found.</p>
+{% else %}
+<div class="shopgrid" id="shop-grid"></div>
+{% endif %}
+
+<script>
+const SHOPS = {{ shops|tojson }};
+
+const titleCase = str => {
+    if (typeof str !== 'string') return '';
+    return str.toLowerCase().replace(/\w\S*/g, txt =>
+        txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+    );
+};
+
+function renderStockSpace(n) {
+    if (n.type === 'SELLING') {
+        if (n.stock <= 0) return 'Out of stock.';
+        return 'Stock: ' + n.stock;
+    } else {
+        if (n.space <= 0) return 'Out of space.';
+        return 'Space: ' + n.space;
+    }
+}
+
+function renderMeta(n) {
+    if (!n.item || !n.item.meta) return '';
+    const meta = n.item.meta;
+    const parts = [];
+    if (meta['meta-type'] === 'POTION') parts.push('Potion');
+    const enchants = Object.assign({}, meta.enchants || {}, meta['stored-enchants'] || {});
+    const enchKeys = Object.keys(enchants);
+    if (enchKeys.length) {
+        const enchStr = enchKeys.map(k => {
+            const name = k.replace('minecraft:', '').replace(/_/g, ' ')
+                          .replace(/\b\w/g, c => c.toUpperCase());
+            return name + ' ' + enchants[k];
+        }).join(', ');
+        parts.push(enchStr);
+    }
+    return parts.join('<br>');
+}
+
+function createCard(n) {
+    const rawItemId = n.item && typeof n.item.item === 'string' ? n.item.item : 'unknown';
+    const itemId = rawItemId.toLowerCase();
+
+    let rawName = null;
+    const meta = n.item && n.item.meta;
+    if (meta && meta['display-name'] && meta['display-name'].extra &&
+        meta['display-name'].extra.length > 0 &&
+        typeof meta['display-name'].extra[0].text === 'string') {
+        rawName = meta['display-name'].extra[0].text;
+    } else if (typeof rawItemId === 'string') {
+        rawName = rawItemId.replace(/_/g, ' ');
+    }
+    const displayName = titleCase(rawName || 'Unknown Item');
+
+    const card = document.createElement('div');
+    card.className = 'player-card';
+    card.style.padding = '20px';
+    card.style.boxSizing = 'border-box';
+
+    card.innerHTML = `
+        <a href="/shops/${n.id}" style="color:white; line-height:1.2; font-weight:normal;">
+            <img loading="lazy"
+                 src="https://api.earthpol.com/textures/item/${itemId}.png"
+                 alt="${itemId} image"
+                 style="width:80px; height:auto; max-height:180px; object-fit:contain; image-rendering:pixelated;"
+                 onerror="this.style.display='none'">
+            <p><b>${displayName}</b></p>
+            <p>
+                <i>${n.type.charAt(0) + n.type.slice(1).toLowerCase()} for</i><br>
+                ${Math.round(n.price)}g per ${n.item.amount} items
+            </p>
+            <p>${renderStockSpace(n)}</p>
+            <p style="font-size:0.75rem; color:lightgray; font-style:italic; line-height:1.1;">${renderMeta(n)}</p>
+        </a>
+    `;
+    return card;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('shop-grid');
+    if (grid) SHOPS.forEach(n => grid.appendChild(createCard(n)));
+});
+</script>
+{% endblock %}
