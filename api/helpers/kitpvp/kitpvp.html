@@ -4,67 +4,30 @@
 {% block content %}
 <h1>KitPvP Leaderboard</h1>
 
-{% macro th(col, label) %}
-{% set is_active = sort == col %}
-{% set next_order = "asc" if (is_active and order == "desc") else "desc" %}
-<th class="col-num{% if is_active %} active{% endif %}"
-    onclick="applySort('{{ col }}', '{{ next_order }}')">
-    {{ label }}
-    <span class="sort-arrow">{% if is_active %}{{ "↑" if order == "asc" else "↓" }}{% else %}↕{% endif %}</span>
-</th>
-{% endmacro %}
-
 <div class="lb-wrap">
 <table class="lb-table">
     <thead>
         <tr>
             <th class="col-rank">#</th>
             <th class="col-player">Player</th>
-            {{ th("kills",           "Kills") }}
-            {{ th("deaths",          "Deaths") }}
-            {{ th("kd",              "K/D") }}
-            {{ th("assists",         "Assists") }}
-            {{ th("best_killstreak", "Best Streak") }}
-            {{ th("damage",          "Damage") }}
+            <th class="col-num" data-col="kills">Kills <span class="sort-arrow">↓</span></th>
+            <th class="col-num" data-col="deaths">Deaths <span class="sort-arrow">↕</span></th>
+            <th class="col-num" data-col="kd">K/D <span class="sort-arrow">↕</span></th>
+            <th class="col-num" data-col="assists">Assists <span class="sort-arrow">↕</span></th>
+            <th class="col-num" data-col="best_killstreak">Best Streak <span class="sort-arrow">↕</span></th>
+            <th class="col-num" data-col="damage">Damage <span class="sort-arrow">↕</span></th>
         </tr>
     </thead>
-    <tbody>
-        {% for p in items %}
-        <tr class="{% if p.rank <= 3 %}top-{{ p.rank }}{% endif %}">
-            <td class="col-rank">
-                {% if p.rank == 1 %}🥇
-                {% elif p.rank == 2 %}🥈
-                {% elif p.rank == 3 %}🥉
-                {% else %}{{ p.rank }}{% endif %}
-            </td>
-            <td class="col-player">
-                <img src="https://mc-heads.net/avatar/{{ p.uuid }}/20" class="lb-head" onerror="this.style.display='none'">
-                <a href="/players/{{ p.username }}">{{ p.username }}</a>
-            </td>
-            <td class="col-num{% if sort=='kills' %} active-col{% endif %}">{{ p.kills }}</td>
-            <td class="col-num{% if sort=='deaths' %} active-col{% endif %}">{{ p.deaths }}</td>
-            <td class="col-num{% if sort=='kd' %} active-col{% endif %}">{{ p.kd }}</td>
-            <td class="col-num{% if sort=='assists' %} active-col{% endif %}">{{ p.assists }}</td>
-            <td class="col-num{% if sort=='best_killstreak' %} active-col{% endif %}">{{ p.best_killstreak }}</td>
-            <td class="col-num{% if sort=='damage' %} active-col{% endif %}">{{ "{:,}".format(p.damage | int) }}</td>
-        </tr>
-        {% endfor %}
+    <tbody id="lb-body">
+        <tr><td colspan="8" class="loading-cell">Loading...</td></tr>
     </tbody>
 </table>
 </div>
 
-<div class="pagination">
-    {% if page > 1 %}
-    <a href="?sort={{ sort }}&order={{ order }}&page={{ page - 1 }}">← Prev</a>
-    {% else %}
-    <a class="disabled">← Prev</a>
-    {% endif %}
-    <span class="filler">Page {{ page }}</span>
-    {% if has_next %}
-    <a href="?sort={{ sort }}&order={{ order }}&page={{ page + 1 }}">Next →</a>
-    {% else %}
-    <a class="disabled">Next →</a>
-    {% endif %}
+<div class="pagination" id="lb-pagination" style="display:none;">
+    <a id="btn-prev" class="disabled">← Prev</a>
+    <span class="filler" id="page-label">Page 1</span>
+    <a id="btn-next" class="disabled">Next →</a>
 </div>
 
 <style>
@@ -83,17 +46,16 @@
     letter-spacing: 0.5px;
     border-bottom: 1px solid #222;
     white-space: nowrap;
-    cursor: pointer;
+    text-align: left;
     user-select: none;
     transition: color 0.15s;
-    text-align: left;
 }
-.lb-table thead th:hover { color: #aaa; }
+.lb-table thead th.col-num {
+    text-align: right;
+    cursor: pointer;
+}
+.lb-table thead th.col-num:hover { color: #aaa; }
 .lb-table thead th.active { color: #4da6ff; }
-.lb-table thead th.col-rank  { cursor: default; text-align: center; }
-.lb-table thead th.col-player { cursor: default; }
-.lb-table thead th.col-num { text-align: right; }
-
 .sort-arrow { margin-left: 4px; opacity: 0.4; font-size: 10px; }
 .lb-table thead th.active .sort-arrow { opacity: 1; }
 
@@ -112,30 +74,99 @@
     white-space: nowrap;
     vertical-align: middle;
 }
+.loading-cell { text-align: center; color: #555; font-style: italic; padding: 40px; }
 .col-rank { color: #555; font-size: 13px; width: 44px; text-align: center; }
 .col-player { min-width: 160px; }
 .col-player a { color: #e0e0e0 !important; font-size: 13.5px; font-weight: 500; }
 .col-player a:hover { color: #4da6ff !important; }
 .col-num { text-align: right; font-variant-numeric: tabular-nums; }
 .active-col { color: #e0e0e0; font-weight: 600; }
-
-.lb-head {
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    image-rendering: pixelated;
-    vertical-align: middle;
-    margin-right: 8px;
-}
+.lb-head { width: 20px; height: 20px; border-radius: 3px; image-rendering: pixelated; vertical-align: middle; margin-right: 8px; }
 </style>
 
 <script>
-function applySort(col, ord) {
-    const url = new URL(window.location);
-    url.searchParams.set('sort', col);
-    url.searchParams.set('order', ord);
-    url.searchParams.set('page', '1');
-    window.location = url;
+const PER_PAGE = 50;
+let allPlayers = [];
+let sortCol    = 'kills';
+let sortDesc   = true;
+let page       = 1;
+
+const body     = document.getElementById('lb-body');
+const pag      = document.getElementById('lb-pagination');
+const pageLabel = document.getElementById('page-label');
+const btnPrev  = document.getElementById('btn-prev');
+const btnNext  = document.getElementById('btn-next');
+
+fetch('/kitpvp/data')
+    .then(r => r.json())
+    .then(data => {
+        allPlayers = data;
+        render();
+        pag.style.display = '';
+    });
+
+document.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        if (sortCol === col) {
+            sortDesc = !sortDesc;
+        } else {
+            sortCol  = col;
+            sortDesc = true;
+        }
+        page = 1;
+        render();
+    });
+});
+
+btnPrev.addEventListener('click', () => { if (page > 1) { page--; render(); } });
+btnNext.addEventListener('click', () => { if (hasNext()) { page++; render(); } });
+
+function hasNext() {
+    return page * PER_PAGE < allPlayers.length;
+}
+
+function render() {
+    const sorted = [...allPlayers].sort((a, b) => {
+        const av = a[sortCol] ?? 0, bv = b[sortCol] ?? 0;
+        return sortDesc ? bv - av : av - bv;
+    });
+
+    const offset = (page - 1) * PER_PAGE;
+    const slice  = sorted.slice(offset, offset + PER_PAGE);
+
+    const medals = ['🥇','🥈','🥉'];
+    const rows = slice.map((p, i) => {
+        const rank    = offset + i + 1;
+        const rankStr = rank <= 3 ? medals[rank-1] : rank;
+        const cls     = rank <= 3 ? `top-${rank}` : '';
+        return `<tr class="${cls}">
+            <td class="col-rank">${rankStr}</td>
+            <td class="col-player">
+                <img src="https://mc-heads.net/avatar/${p.uuid}/20" class="lb-head" onerror="this.style.display='none'">
+                <a href="/players/${p.username}">${p.username}</a>
+            </td>
+            <td class="col-num${sortCol==='kills'?' active-col':''}">${p.kills}</td>
+            <td class="col-num${sortCol==='deaths'?' active-col':''}">${p.deaths}</td>
+            <td class="col-num${sortCol==='kd'?' active-col':''}">${p.kd}</td>
+            <td class="col-num${sortCol==='assists'?' active-col':''}">${p.assists}</td>
+            <td class="col-num${sortCol==='best_killstreak'?' active-col':''}">${p.best_killstreak}</td>
+            <td class="col-num${sortCol==='damage'?' active-col':''}">${Math.floor(p.damage).toLocaleString()}</td>
+        </tr>`;
+    });
+    body.innerHTML = rows.join('');
+
+    document.querySelectorAll('th[data-col]').forEach(th => {
+        const isActive = th.dataset.col === sortCol;
+        th.classList.toggle('active', isActive);
+        th.querySelector('.sort-arrow').textContent = isActive ? (sortDesc ? '↓' : '↑') : '↕';
+    });
+
+    pageLabel.textContent = `Page ${page}`;
+    btnPrev.classList.toggle('disabled', page === 1);
+    btnNext.classList.toggle('disabled', !hasNext());
+    btnPrev.style.pointerEvents = page === 1 ? 'none' : '';
+    btnNext.style.pointerEvents = !hasNext() ? 'none' : '';
 }
 </script>
 {% endblock %}
