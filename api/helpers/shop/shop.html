@@ -363,8 +363,9 @@ a { color: #4da6ff; text-decoration: none; font-size: inherit; }
 a:hover { color: #7dc0ff; }
 
 @media (max-width: 900px) {
-    .detail-body { flex-direction: column; }
-    .detail-left { flex: none; width: 100%; }
+    .detail-body { flex-direction: column; align-items: stretch; }
+    .detail-left, .detail-right { flex: none; width: 100%; }
+    .stats-bar { flex-wrap: wrap; justify-content: center; }
 }
 </style>
 
