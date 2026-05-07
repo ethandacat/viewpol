@@ -42,10 +42,9 @@
 <!-- Info row -->
 <div class="info-row">
     {% if siege.bannerLocation %}
-    <div class="info-card">
+    <div class="info-card" style="text-align:center;">
         <div class="info-label">Banner Location</div>
-        <div class="info-val">{{ siege.bannerLocation.world }}</div>
-        <div class="info-sub">X {{ siege.bannerLocation.x }}, Y {{ siege.bannerLocation.y }}, Z {{ siege.bannerLocation.z }}</div>
+        <div class="info-val">{{ siege.bannerLocation.x }}, {{ siege.bannerLocation.y }}, {{ siege.bannerLocation.z }}</div>
     </div>
     {% endif %}
     {% if siege.startedAtMillis %}
