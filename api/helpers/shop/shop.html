@@ -289,25 +289,24 @@ a:hover { color:#7dc0ff; }
 }
 #book-bg-img {
     display: block;
-    width: 500px;
+    height: 460px;
+    width: auto;
     image-rendering: pixelated;
 }
 #book-text-area {
+    /* 14 lines × 26px line-height = 364px, centered within 460px image */
     position: absolute;
-    /* roughly the page area within the JE book background */
-    top: 9%;
-    left: 10%;
-    right: 10%;
-    bottom: 14%;
-    overflow-y: auto;
-    scrollbar-width: none;
+    top: 48px;
+    left: 30px;
+    right: 30px;
+    height: 364px;
+    overflow: hidden;
 }
-#book-text-area::-webkit-scrollbar { display: none; }
 #book-page-text {
     font-family: 'Minecraftia', monospace;
-    font-size: 13px;
+    font-size: 16px;
     color: #1A1007;
-    line-height: 1.65;
+    line-height: 26px;
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
