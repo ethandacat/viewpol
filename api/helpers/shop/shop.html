@@ -46,25 +46,22 @@
 <a href="/shops" class="back-link">← Back to Shops</a>
 
 <div class="detail-header">
-    <div class="item-wrap">
+    <div class="item-wrap" id="item-hero-wrap">
         <img id="item-hero" class="item-hero"
              src="https://api.earthpol.com/textures/item/{{ data.item.item|lower }}.png"
              alt="{{ display_name }}"
              onerror="this.style.display='none'">
+    </div>
 
-        <div class="mc-tooltip">
-            <p class="mc-name" style="color:{{ name_color }};">{{ display_name }}</p>
-            {% if all_enchants %}
-                {% for ench, lvl in all_enchants.items() %}
-                    <p class="mc-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</p>
-                {% endfor %}
-            {% endif %}
-            {% if data.item.meta and data.item.meta.lore %}
-                {% for line in data.item.meta.lore %}
-                    <p class="mc-lore-line">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</p>
-                {% endfor %}
-            {% endif %}
-        </div>
+    <!-- Hidden tooltip data read by JS -->
+    <div style="display:none">
+        <div id="minetip-data-title"><span class="minetip-title" style="color:{{ name_color }};">{{ display_name }}</span></div>
+        {% if all_enchants %}
+        <div id="minetip-data-enchants">{% for ench, lvl in all_enchants.items() %}<span class="minetip-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</span>{% endfor %}</div>
+        {% endif %}
+        {% if data.item.meta and data.item.meta.lore %}
+        <div id="minetip-data-lore">{% for line in data.item.meta.lore %}<span class="minetip-lore">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</span>{% endfor %}</div>
+        {% endif %}
     </div>
 
     <p class="item-id-sub">minecraft:{{ data.item.item|lower }}</p>
@@ -174,28 +171,49 @@
     font-size: 11px; color: #555; margin: 0 0 14px;
 }
 
-/* MC-Tooltip authentic border */
-.mc-tooltip {
-    display: none;
+/* Minecraft Wiki exact tooltip implementation */
+#minetip-tooltip {
     position: fixed;
-    padding: 0.5em 0.7em;
-    border: 7px solid transparent;
-    border-radius: 3px;
-    border-image: url(https://cdn.jsdelivr.net/gh/laquazi/MC-Tooltip@master/static/img/tooltip-border.png) 30% repeat;
-    background-color: #1E0F1E;
-    opacity: 0.95;
-    z-index: 9999;
-    pointer-events: none;
-    text-align: left;
+    top: 0;
+    left: 0;
+    background-color: rgba(16, 0, 16, 0.94);
+    padding: 0.375em;
+    font-family: 'Minecraftia', sans-serif;
+    font-size: 16px;
+    word-spacing: 4px;
     white-space: nowrap;
-    text-shadow: 0.11em 0.11em #303030;
-    word-spacing: 0.2em;
-    line-height: 1.4em;
+    line-height: 1.25em;
+    margin: 0.125em 0.25em;
+    pointer-events: none;
+    z-index: 9999;
+    color: #FBFBFB;
+    text-shadow: 0.125em 0.125em 0 #3E3E3E;
 }
-.mc-name     { font-family:'Minecraftia',monospace; font-size:15px; margin:0 0 3px; line-height:1.4; }
-.mc-enchant  { font-family:'Minecraftia',monospace; font-size:13px; color:#AAAAAA; margin:1px 0; line-height:1.4; }
-.mc-lore-line{ font-family:'Minecraftia',monospace; font-size:12px; margin:1px 0; line-height:1.4; }
-.mc-text     { font-family:'Minecraftia',monospace; font-size:12px; line-height:1.5; margin:0 0 4px; }
+#minetip-tooltip::before {
+    content: "";
+    position: absolute;
+    top: 0.125em;
+    right: -0.125em;
+    bottom: 0.125em;
+    left: -0.125em;
+    border: 0.15em solid #100010;
+    border-style: none solid;
+    border-color: rgba(16, 0, 16, 0.94);
+}
+#minetip-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 0.125em;
+    right: 0;
+    bottom: 0.125em;
+    left: 0;
+    border: 0.125em solid #2D0A63;
+    border-image: linear-gradient(rgba(80, 0, 255, 0.31), rgba(40, 0, 127, 0.31)) 1;
+}
+#minetip-tooltip .minetip-title    { display: block; }
+#minetip-tooltip .minetip-enchant  { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; }
+#minetip-tooltip .minetip-lore     { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; margin-top: 0.25em; font-style: italic; }
+.mc-text { font-family:'Minecraftia',sans-serif; font-size:12px; line-height:1.5; margin:0 0 4px; }
 
 .stats-bar {
     display: inline-flex; align-items: center; gap: 10px;
@@ -234,22 +252,53 @@ a:hover { color:#7dc0ff; }
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const hero    = document.getElementById('item-hero');
-    const tooltip = document.querySelector('.mc-tooltip');
-    if (!hero || !tooltip) return;
+    const wrap = document.getElementById('item-hero-wrap');
+    if (!wrap) return;
 
-    const OFFSET = 14;
-    hero.addEventListener('mouseenter', () => { tooltip.style.display = 'block'; });
-    hero.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
-    hero.addEventListener('mousemove', e => {
-        const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
-        const vw = window.innerWidth,   vh = window.innerHeight;
-        let x = e.clientX + OFFSET, y = e.clientY + OFFSET;
-        if (x + tw > vw - 8) x = e.clientX - tw - OFFSET;
-        if (y + th > vh - 8) y = e.clientY - th - OFFSET;
-        tooltip.style.left = x + 'px';
-        tooltip.style.top  = y + 'px';
+    let tip = null, winW, winH, tipW, tipH;
+
+    function buildContent() {
+        const titleEl = document.getElementById('minetip-data-title');
+        const enchantsEl = document.getElementById('minetip-data-enchants');
+        const loreEl = document.getElementById('minetip-data-lore');
+        let html = '';
+        if (titleEl) html += titleEl.innerHTML;
+        if (enchantsEl) html += enchantsEl.innerHTML;
+        if (loreEl) html += loreEl.innerHTML;
+        return html;
+    }
+
+    function position(e) {
+        let top = e.clientY - 34;
+        let left = e.clientX + 14;
+        if (left + tipW > winW) { left -= tipW + 36; }
+        if (left < 0) {
+            left = 0;
+            top -= tipH - 22;
+            if (top < 0) top += tipH + 47;
+        } else if (top < 0) {
+            top = 0;
+        } else if (top + tipH > winH) {
+            top = winH - tipH;
+        }
+        tip.style.top  = top + 'px';
+        tip.style.left = left + 'px';
+    }
+
+    wrap.addEventListener('mouseenter', e => {
+        if (tip) tip.remove();
+        tip = document.createElement('div');
+        tip.id = 'minetip-tooltip';
+        tip.innerHTML = buildContent();
+        document.body.appendChild(tip);
+        winW = window.innerWidth;
+        winH = window.innerHeight;
+        tipW = tip.offsetWidth;
+        tipH = tip.offsetHeight;
+        position(e);
     });
+    wrap.addEventListener('mousemove', e => { if (tip) position(e); });
+    wrap.addEventListener('mouseleave', () => { if (tip) { tip.remove(); tip = null; } });
 });
 </script>
 {% endblock %}
