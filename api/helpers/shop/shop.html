@@ -132,11 +132,37 @@
             {% endif %}
         </div>
 
-        {% if data.item.meta and "BOOK" in data.item.meta["meta-type"] %}
+        {% if data.item.meta_type and "BOOK" in data.item.meta_type %}
         <div class="section">
-            <h2>📖 Book Preview</h2>
-            <p class="mc-text" style="font-weight:700;color:#fff;">{{ data.item.meta.title }}</p>
-            <p class="mc-text" style="color:#aaa;">{{ data.item.meta.pages[0] }}…</p>
+            <h2>📖 Book</h2>
+            {% if data.item.meta.title %}
+            <div class="info-row" style="margin-top:0;"><span class="info-label">Title</span><span>{{ data.item.meta.title }}</span></div>
+            {% endif %}
+            {% if data.item.meta.author %}
+            <div class="info-row"><span class="info-label">Author</span><span>{{ data.item.meta.author }}</span></div>
+            {% endif %}
+            <button id="open-book-btn" style="margin-top:10px;width:100%;">📖 Read Book</button>
+        </div>
+
+        <!-- Book modal -->
+        <div id="book-modal">
+            <div id="book-backdrop"></div>
+            <div id="book-viewer">
+                <div id="book-wrap">
+                    <img id="book-bg-img"
+                         src="https://static.wikia.nocookie.net/minecraft_gamepedia/images/4/4d/Book_Background_%28JE%29.png/revision/latest?cb=20190331054032"
+                         alt="">
+                    <div id="book-text-area">
+                        <pre id="book-page-text"></pre>
+                    </div>
+                </div>
+                <div id="book-nav-bar">
+                    <button class="book-nav-btn" id="book-prev">◀</button>
+                    <span id="book-page-label">1 / 1</span>
+                    <button class="book-nav-btn" id="book-next">▶</button>
+                    <button id="book-close-btn">✕ Close</button>
+                </div>
+            </div>
         </div>
         {% endif %}
 
@@ -234,6 +260,94 @@
 a { color:#4da6ff; text-decoration:none; font-size:inherit; }
 a:hover { color:#7dc0ff; }
 
+/* ── Book modal ──────────────────────────────── */
+#book-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+#book-modal.open { display: flex; }
+#book-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+}
+#book-viewer {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+#book-wrap {
+    position: relative;
+    display: inline-block;
+}
+#book-bg-img {
+    display: block;
+    width: 500px;
+    image-rendering: pixelated;
+}
+#book-text-area {
+    position: absolute;
+    /* roughly the page area within the JE book background */
+    top: 9%;
+    left: 10%;
+    right: 10%;
+    bottom: 14%;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+#book-text-area::-webkit-scrollbar { display: none; }
+#book-page-text {
+    font-family: 'Minecraftia', monospace;
+    font-size: 13px;
+    color: #1A1007;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+}
+#book-nav-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.book-nav-btn {
+    background: #5a3e1b;
+    color: #f0d090;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-family: 'Minecraftia', monospace;
+    font-size: 12px;
+    cursor: pointer;
+}
+.book-nav-btn:hover { background: #7a5a2b; }
+.book-nav-btn:disabled { opacity: 0.35; cursor: default; }
+#book-page-label {
+    font-family: 'Minecraftia', monospace;
+    font-size: 12px;
+    color: #e0c890;
+    min-width: 60px;
+    text-align: center;
+}
+#book-close-btn {
+    background: #333;
+    color: #aaa;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 6px;
+}
+#book-close-btn:hover { background: #444; color: #fff; }
+
 @media (max-width: 900px) {
     .detail-body { flex-direction:column; align-items:stretch; }
     .detail-left, .detail-right { flex:none; width:100%; }
@@ -274,6 +388,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         tip.style.top  = top + 'px';
         tip.style.left = left + 'px';
+    }
+
+    // ── Book viewer ──────────────────────────────
+    const openBtn   = document.getElementById('open-book-btn');
+    const modal     = document.getElementById('book-modal');
+    const backdrop  = document.getElementById('book-backdrop');
+    const closeBtn  = document.getElementById('book-close-btn');
+    const pageText  = document.getElementById('book-page-text');
+    const pageLabel = document.getElementById('book-page-label');
+    const prevBtn   = document.getElementById('book-prev');
+    const nextBtn   = document.getElementById('book-next');
+
+    if (openBtn && modal) {
+        const PAGES = {{ (data.item.meta.pages | tojson) if (data.item.meta_type and 'BOOK' in data.item.meta_type and data.item.meta.pages) else '[]' }};
+        let currentPage = 0;
+
+        function extractText(p) {
+            if (typeof p === 'string') {
+                try {
+                    const obj = JSON.parse(p);
+                    if (obj && typeof obj === 'object') {
+                        let text = obj.text || '';
+                        if (obj.extra) obj.extra.forEach(e => { text += (typeof e === 'object' ? e.text || '' : e); });
+                        return text;
+                    }
+                } catch (_) {}
+                return p;
+            }
+            if (p && typeof p === 'object') {
+                let text = p.text || '';
+                if (p.extra) p.extra.forEach(e => { text += (typeof e === 'object' ? e.text || '' : e); });
+                return text;
+            }
+            return String(p ?? '');
+        }
+
+        function showPage(n) {
+            currentPage = Math.max(0, Math.min(n, PAGES.length - 1));
+            pageText.textContent = extractText(PAGES[currentPage]);
+            pageLabel.textContent = (currentPage + 1) + ' / ' + PAGES.length;
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = currentPage === PAGES.length - 1;
+            document.getElementById('book-text-area').scrollTop = 0;
+        }
+
+        function openModal()  { modal.classList.add('open'); showPage(0); }
+        function closeModal() { modal.classList.remove('open'); }
+
+        openBtn.addEventListener('click', openModal);
+        closeBtn.addEventListener('click', closeModal);
+        backdrop.addEventListener('click', closeModal);
+        prevBtn.addEventListener('click', () => showPage(currentPage - 1));
+        nextBtn.addEventListener('click', () => showPage(currentPage + 1));
+        document.addEventListener('keydown', e => {
+            if (!modal.classList.contains('open')) return;
+            if (e.key === 'Escape')      closeModal();
+            if (e.key === 'ArrowLeft')   showPage(currentPage - 1);
+            if (e.key === 'ArrowRight')  showPage(currentPage + 1);
+        });
     }
 
     wrap.addEventListener('mouseenter', e => {
