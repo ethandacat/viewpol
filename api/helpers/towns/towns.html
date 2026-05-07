@@ -32,64 +32,37 @@
 const TOWNS_PER_PAGE = 20;
 let currentPage = {{ page }};
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     const gridContainer = document.querySelector('.nationgrid');
     const allCards = Array.from(document.querySelectorAll('.player-card'));
 
-    const flagChecks = allCards.map(card => {
-        const img = card.querySelector('img');
-        return new Promise(resolve => {
-            const testImg = new Image();
-            testImg.onload = () => resolve({ card, hasFlag: true });
-            testImg.onerror = () => resolve({ card, hasFlag: false });
-            testImg.src = img.src;
-        });
-    });
-
-    const results = await Promise.all(flagChecks);
-
-    let towns = results.map(r => ({
-        name: r.card.dataset.name,
-        element: r.card,
-        hasFlag: r.hasFlag
-    }));
-
-    function sortTowns(list) {
-        return list.sort((a, b) => {
-            if (a.hasFlag !== b.hasFlag) return b.hasFlag - a.hasFlag;
-            return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-        });
-    }
+    let towns = allCards
+        .map(card => ({ name: card.dataset.name, element: card }))
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     const totalPages = Math.ceil(towns.length / TOWNS_PER_PAGE);
 
     function renderPage(page) {
         const start = (page - 1) * TOWNS_PER_PAGE;
         const end = start + TOWNS_PER_PAGE;
-        const pageItems = towns.slice(start, end);
-
         gridContainer.innerHTML = '';
-        pageItems.forEach(t => gridContainer.appendChild(t.element));
-
+        towns.slice(start, end).forEach(t => gridContainer.appendChild(t.element));
         renderPaginationControls(page);
     }
 
     function renderPaginationControls(page) {
         const container = document.getElementById('pagination-controls');
         container.innerHTML = '';
-
         const controls = [];
 
         const first = document.createElement('a');
-        first.href = '#';
-        first.textContent = '« First';
+        first.href = '#'; first.textContent = '« First';
         first.className = page === 1 ? 'disabled' : '';
         if (page !== 1) first.onclick = e => { e.preventDefault(); goToPage(1); };
         controls.push(first);
 
         const prev = document.createElement('a');
-        prev.href = '#';
-        prev.textContent = '‹ Prev';
+        prev.href = '#'; prev.textContent = '‹ Prev';
         prev.className = page === 1 ? 'disabled' : '';
         if (page > 1) prev.onclick = e => { e.preventDefault(); goToPage(page - 1); };
         controls.push(prev);
@@ -99,29 +72,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             const numPage = startNum + i;
             if (numPage <= totalPages) {
                 const pageLink = document.createElement('a');
-                pageLink.href = '#';
-                pageLink.textContent = numPage;
+                pageLink.href = '#'; pageLink.textContent = numPage;
                 if (numPage === page) pageLink.className = 'current';
                 pageLink.onclick = e => { e.preventDefault(); goToPage(numPage); };
                 controls.push(pageLink);
             } else {
                 const filler = document.createElement('span');
-                filler.textContent = '...';
-                filler.className = 'filler';
+                filler.textContent = '...'; filler.className = 'filler';
                 controls.push(filler);
             }
         }
 
         const next = document.createElement('a');
-        next.href = '#';
-        next.textContent = 'Next ›';
+        next.href = '#'; next.textContent = 'Next ›';
         next.className = page === totalPages ? 'disabled' : '';
         if (page < totalPages) next.onclick = e => { e.preventDefault(); goToPage(page + 1); };
         controls.push(next);
 
         const last = document.createElement('a');
-        last.href = '#';
-        last.textContent = 'Last »';
+        last.href = '#'; last.textContent = 'Last »';
         last.className = page === totalPages ? 'disabled' : '';
         if (page !== totalPages) last.onclick = e => { e.preventDefault(); goToPage(totalPages); };
         controls.push(last);
@@ -137,17 +106,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('search-form').addEventListener('submit', e => {
         e.preventDefault();
         const query = document.getElementById('search-input').value.toLowerCase();
-        towns = sortTowns(results
-            .filter(r => r.card.dataset.name.toLowerCase().includes(query))
-            .map(r => ({ name: r.card.dataset.name, element: r.card, hasFlag: r.hasFlag }))
-        );
+        towns = allCards
+            .filter(card => card.dataset.name.toLowerCase().includes(query))
+            .map(card => ({ name: card.dataset.name, element: card }))
+            .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
         currentPage = 1;
         renderPage(currentPage);
     });
 
-    towns = sortTowns(towns);
     renderPage(currentPage);
-
     gridContainer.style.visibility = 'visible';
 });
 </script>
