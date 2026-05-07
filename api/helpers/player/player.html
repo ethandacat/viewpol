@@ -248,8 +248,13 @@ a:hover { color: #7dc0ff; }
     align-items: center;
     margin-top: 4px;
 }
+.shop-controls input[type="text"],
+.shop-controls .filter-group {
+    height: 32px;
+    box-sizing: border-box;
+}
 .shop-controls input[type="text"] {
-    padding: 6px 10px;
+    padding: 0 10px;
     font-size: 12.5px;
     font-family: inherit;
     border-radius: 7px;
@@ -262,6 +267,8 @@ a:hover { color: #7dc0ff; }
 }
 .shop-controls input[type="text"]:focus { border-color: #3d7bd6; }
 .shop-controls input[type="text"]::placeholder { color: #555; }
+.shop-controls .filter-group { padding: 2px; }
+.shop-controls .filter-group label { padding: 3px 10px; line-height: 1; font-size: 12.5px; }
 
 @media (max-width: 700px) {
     .stats-bar { flex-wrap: wrap; justify-content: center; }
