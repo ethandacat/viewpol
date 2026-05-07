@@ -55,12 +55,14 @@
             </div>
         </div>
 
+        {% if shops %}
         <div class="section">
-            <h2>🏦 Shops</h2>
-            <a href="/players/{{ data.uuid }}/shops">View {{ data.name }}'s shops →</a>
+            <h2>🏦 Shops <span class="count">{{ shops|length }}</span></h2>
+            <div class="shopgrid" id="player-shop-grid" style="margin-top:8px;"></div>
         </div>
+        {% endif %}
 
-        <div class="section" data-threshold="20">
+<div class="section" data-threshold="20">
             <h2>👥 Friends <span class="count">{{ data.friends | length }}</span></h2>
             {% if data.friends %}
                 {% for f in data.friends %}
@@ -246,6 +248,45 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         container.appendChild(btn);
     });
+
+    const SHOPS = {{ shops|tojson if shops else '[]' }};
+    const shopGrid = document.getElementById('player-shop-grid');
+    if (shopGrid && SHOPS.length) {
+        const titleCase = s => s.toLowerCase().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.substr(1));
+
+        SHOPS.forEach(n => {
+            const rawId = (n.item && n.item.item) ? n.item.item : 'unknown';
+            const meta = n.item && n.item.meta;
+            let rawName = null;
+            if (meta && meta['display-name'] && meta['display-name'].extra && meta['display-name'].extra[0])
+                rawName = meta['display-name'].extra[0].text;
+            const displayName = titleCase((rawName || rawId).replace(/_/g, ' '));
+
+            const enchants = Object.assign({}, meta && meta.enchants || {}, meta && meta['stored-enchants'] || {});
+            const enchStr = Object.keys(enchants).map(k =>
+                k.replace('minecraft:','').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) + ' ' + enchants[k]
+            ).join(', ');
+
+            const stockLine = n.type === 'SELLING'
+                ? (n.stock <= 0 ? 'Out of stock.' : 'Stock: ' + n.stock)
+                : (n.space <= 0 ? 'Out of space.' : 'Space: ' + n.space);
+
+            const card = document.createElement('div');
+            card.className = 'player-card';
+            card.style.cssText = 'padding:20px; box-sizing:border-box;';
+            card.innerHTML = `
+                <a href="/shops/${n.id}" style="color:white;line-height:1.2;font-weight:normal;">
+                    <img loading="lazy" src="https://api.earthpol.com/textures/item/${rawId.toLowerCase()}.png"
+                         style="width:80px;height:auto;max-height:180px;object-fit:contain;image-rendering:pixelated;"
+                         onerror="this.style.display='none'">
+                    <p><b>${displayName}</b></p>
+                    <p><i>${n.type.charAt(0)+n.type.slice(1).toLowerCase()} for</i><br>${Math.round(n.price)}g per ${n.item.amount} items</p>
+                    <p>${stockLine}</p>
+                    ${enchStr ? `<p style="font-size:.75rem;color:lightgray;font-style:italic;">${enchStr}</p>` : ''}
+                </a>`;
+            shopGrid.appendChild(card);
+        });
+    }
 });
 </script>
 {% endblock %}
