@@ -90,7 +90,7 @@
                 <span class="ev-icon">☠</span>
                 <span class="ev-text">
                     {% if p.natural_death %}
-                    <b>{{ p.victim }}</b> <span class="ev-side side-{{ p.victim_side | lower }}">{{ p.victim_side }}</span> died
+                    <b>{{ p.victim }}</b> died
                     {% else %}
                     <b>{{ p.killer }}</b> killed <b>{{ p.victim }}</b>
                     {% endif %}
