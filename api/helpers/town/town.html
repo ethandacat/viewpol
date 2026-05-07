@@ -5,11 +5,18 @@
 <a href="/towns" class="back-link">← Back to Towns</a>
 
 <div class="detail-header">
-    <img class="header-flag"
-         src="https://cdn.earthpol.com/towns/{{ data.name.replace(' ', '_') }}.png"
-         alt="{{ data.name }} flag"
-         data-name="{{ data.name }}"
-         onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.name);">
+    <div class="header-flags">
+        <img class="header-flag"
+             src="https://cdn.earthpol.com/towns/{{ data.name.replace(' ', '_') }}.png"
+             alt="{{ data.name }} flag"
+             onerror="this.onerror=null;this.style.display='none';">
+        {% if data.nation and data.nation.name %}
+        <img class="header-flag"
+             src="https://cdn.earthpol.com/nations/{{ data.nation.name.replace(' ', '_') }}.png"
+             alt="{{ data.nation.name }} flag"
+             onerror="this.onerror=null;this.style.display='none';">
+        {% endif %}
+    </div>
     <h1>{{ data.name }}</h1>
     {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
     <div class="stats-bar">
@@ -152,16 +159,19 @@
     text-align: center;
     margin-bottom: 28px;
 }
+.header-flags {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 12px;
+}
 .header-flag {
     width: 160px;
     height: 80px;
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid #252525;
-    margin-bottom: 12px;
     display: block;
-    margin-left: auto;
-    margin-right: auto;
 }
 .detail-header h1 {
     font-size: 32px;

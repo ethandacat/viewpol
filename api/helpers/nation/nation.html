@@ -8,8 +8,7 @@
     <img class="header-flag"
          src="https://cdn.earthpol.com/nations/{{ data.name.replace(' ', '_') }}.png"
          alt="{{ data.name }} flag"
-         data-name="{{ data.name }}"
-         onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.name);">
+         onerror="this.onerror=null;this.style.display='none';">
     <h1>{{ data.name }}</h1>
     {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
     <div class="stats-bar">
