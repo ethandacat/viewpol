@@ -6,7 +6,6 @@ import json
 from codecs import decode
 from ..helpers import itemstack
 from threading import Thread
-import math
 
 SHOPS_PER_PAGE = 40
 app = Blueprint("shops", __name__, template_folder="")
@@ -71,86 +70,46 @@ def load_shops():
     return reqdata
 
 
-def filter_and_page(reqdata, query, stock_filter, type_filter, page):
+def filter_shops(reqdata, query, stock_filter, type_filter):
     if query:
-        reqdata = [
-            n for n in reqdata
-            if query in n["item"]["item"].replace("_", " ").lower()
-        ]
+        reqdata = [n for n in reqdata if query in n["item"]["item"].replace("_", " ").lower()]
 
-    def passes_filters(n):
+    def passes(n):
         t = n.get("type", "UNKNOWN")
-
-        if type_filter == "buying" and t != "BUYING":
-            return False
-        if type_filter == "selling" and t != "SELLING":
-            return False
-
+        if type_filter == "buying"  and t != "BUYING":  return False
+        if type_filter == "selling" and t != "SELLING": return False
         if stock_filter == "hide":
-            if t == "SELLING" and n.get("stock", 0) <= 0:
-                return False
-            if t == "BUYING" and n.get("space", 0) <= 0:
-                return False
-
+            if t == "SELLING" and n.get("stock", 0) <= 0: return False
+            if t == "BUYING"  and n.get("space", 0) <= 0: return False
         return True
 
-    reqdata = [n for n in reqdata if passes_filters(n)]
+    reqdata = [n for n in reqdata if passes(n)]
     reqdata.sort(key=lambda n: n["unit_price"])
-
-    total = len(reqdata)
-    total_pages = max(1, math.ceil(total / SHOPS_PER_PAGE))
-
-    page = max(1, min(page, total_pages))
-
-    start = (page - 1) * SHOPS_PER_PAGE
-    end = start + SHOPS_PER_PAGE
-    players_page = reqdata[start:end]
-
-    return players_page, page, total_pages
+    return reqdata
 
 
 @app.route("/shops")
 def shops_page():
-    page = int(request.args.get("page", 1))
-    query = request.args.get("q", "").lower()
+    query        = request.args.get("q", "").lower()
     stock_filter = request.args.get("stock_filter", "hide")
-    type_filter = request.args.get("type_filter", "both")
-
-    reqdata = load_shops()
-
-    players_page, page, total_pages = filter_and_page(
-        reqdata, query, stock_filter, type_filter, page
-    )
-
+    type_filter  = request.args.get("type_filter",  "both")
     Thread(target=update_shop_cache).start()
-
-    return render_template(
-        "shops.html",
-        players=players_page,
-        page=page,
-        total_pages=total_pages,
-        query=query,
-        stock_filter=stock_filter,
-        type_filter=type_filter,
-        SHOPS_PER_PAGE=SHOPS_PER_PAGE,
-    )
+    return render_template("shops.html", query=query, stock_filter=stock_filter, type_filter=type_filter)
 
 
 @app.route("/shops/data")
 def shops_data():
-    page = int(request.args.get("page", 1))
-    query = request.args.get("q", "").lower()
+    page         = max(1, int(request.args.get("page", 1)))
+    query        = request.args.get("q", "").lower()
     stock_filter = request.args.get("stock_filter", "hide")
-    type_filter = request.args.get("type_filter", "both")
+    type_filter  = request.args.get("type_filter",  "both")
 
-    reqdata = load_shops()
+    reqdata = filter_shops(load_shops(), query, stock_filter, type_filter)
 
-    players_page, page, total_pages = filter_and_page(
-        reqdata, query, stock_filter, type_filter, page
-    )
+    start = (page - 1) * SHOPS_PER_PAGE
+    batch = reqdata[start : start + SHOPS_PER_PAGE]
 
     return jsonify({
-        "page": page,
-        "total_pages": total_pages,
-        "players": players_page,
+        "players":  batch,
+        "has_more": start + SHOPS_PER_PAGE < len(reqdata),
     })

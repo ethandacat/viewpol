@@ -4,14 +4,14 @@
 {% block content %}
 <h1>Players</h1>
 
-<div class="search-bar">
-    <form id="search-form">
-        <input type="text" id="search-input" placeholder="Search players..." value="{{ query }}">
-        <button type="submit">Search</button>
-    </form>
+<div class="search-bar" style="margin-bottom:20px;">
+    <input type="text" id="search-input" placeholder="Search players..." value="{{ query }}" style="width:280px;">
 </div>
 
-<div class="grid" style="visibility: hidden;" id="player-grid">
+<div class="grid" id="grid"></div>
+<div id="sentinel" style="height:1px;margin-bottom:40px;"></div>
+
+<div id="card-pool" style="display:none;">
     {% for p in players %}
     <div class="player-card" data-name="{{ p.name }}">
         <img loading="lazy"
@@ -23,26 +23,39 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const grid = document.getElementById('player-grid');
-    const allCards = Array.from(grid.querySelectorAll('.player-card'));
+(function() {
+    const BATCH = 50;
+    const grid     = document.getElementById('grid');
+    const sentinel = document.getElementById('sentinel');
+    const allCards = Array.from(document.getElementById('card-pool').children)
+        .sort((a, b) => a.dataset.name.localeCompare(b.dataset.name));
 
-    function render(cards) {
-        grid.innerHTML = '';
-        cards
-            .sort((a, b) => a.dataset.name.toLowerCase().localeCompare(b.dataset.name.toLowerCase()))
-            .forEach(c => grid.appendChild(c));
+    let pool = allCards, shown = 0;
+
+    function showMore() {
+        const next = pool.slice(shown, shown + BATCH);
+        if (!next.length) return;
+        const frag = document.createDocumentFragment();
+        next.forEach(c => frag.appendChild(c));
+        grid.appendChild(frag);
+        shown += next.length;
     }
 
-    document.getElementById('search-form').addEventListener('submit', e => {
-        e.preventDefault();
-        const q = document.getElementById('search-input').value.toLowerCase();
-        render(allCards.filter(c => c.dataset.name.toLowerCase().includes(q)));
+    const observer = new IntersectionObserver(
+        e => { if (e[0].isIntersecting) showMore(); },
+        { rootMargin: '400px' }
+    );
+    observer.observe(sentinel);
+
+    document.getElementById('search-input').addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        pool = q ? allCards.filter(c => c.dataset.name.toLowerCase().includes(q)) : allCards;
+        grid.innerHTML = '';
+        shown = 0;
+        showMore();
     });
 
-    render(allCards);
-    grid.style.visibility = 'visible';
-});
+    showMore();
+})();
 </script>
-
 {% endblock %}

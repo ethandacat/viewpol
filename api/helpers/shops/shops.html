@@ -4,267 +4,122 @@
 {% block content %}
 <h1>Shops</h1>
 
-<div class="search-bar">
-  <form id="shop-search-form" method="get" action="/shops">
-    <input type="text" id="shop-search-input" name="q"
-           placeholder="Search shops..." value="{{ query }}">
-    <input type="hidden" name="page" id="shop-search-page" value="{{ page }}">
-    <input type="hidden" name="stock_filter" id="shop-stock-filter" value="{{ stock_filter }}">
-    <input type="hidden" name="type_filter" id="shop-type-filter" value="{{ type_filter }}">
-    <button type="submit">Search</button>
-  </form>
+<div class="search-bar" style="margin-bottom:16px;">
+    <input type="text" id="shop-search" placeholder="Search shops..." value="{{ query }}" style="width:280px;">
 </div>
 
 <div class="filters">
-  <div class="filter-group">
-    <input type="radio" id="stock-show" name="stock_filter_radio" value="show"
-           {{ 'checked' if stock_filter == 'show' else '' }}>
-    <label for="stock-show">Show out of stock</label>
-
-    <input type="radio" id="stock-hide" name="stock_filter_radio" value="hide"
-           {{ 'checked' if stock_filter == 'hide' else '' }}>
-    <label for="stock-hide">Hide out of stock</label>
-  </div>
-
-  <div class="filter-group">
-    <input type="radio" id="type-buying" name="type_filter_radio" value="buying"
-           {{ 'checked' if type_filter == 'buying' else '' }}>
-    <label for="type-buying">Buying</label>
-
-    <input type="radio" id="type-both" name="type_filter_radio" value="both"
-           {{ 'checked' if type_filter == 'both' else '' }}>
-    <label for="type-both">Both</label>
-
-    <input type="radio" id="type-selling" name="type_filter_radio" value="selling"
-           {{ 'checked' if type_filter == 'selling' else '' }}>
-    <label for="type-selling">Selling</label>
-  </div>
+    <div class="filter-group">
+        <input type="radio" id="stock-hide" name="stock_filter" value="hide" {{ 'checked' if stock_filter == 'hide' }}>
+        <label for="stock-hide">Hide out of stock</label>
+        <input type="radio" id="stock-show" name="stock_filter" value="show" {{ 'checked' if stock_filter == 'show' }}>
+        <label for="stock-show">Show out of stock</label>
+    </div>
+    <div class="filter-group">
+        <input type="radio" id="type-buying"  name="type_filter" value="buying"  {{ 'checked' if type_filter == 'buying' }}>
+        <label for="type-buying">Buying</label>
+        <input type="radio" id="type-both"    name="type_filter" value="both"    {{ 'checked' if type_filter == 'both' }}>
+        <label for="type-both">Both</label>
+        <input type="radio" id="type-selling" name="type_filter" value="selling" {{ 'checked' if type_filter == 'selling' }}>
+        <label for="type-selling">Selling</label>
+    </div>
 </div>
 
-<div id="shop-grid-container">
-  <div class="grid shopgrid"></div>
-</div>
-
-<div class="pagination" id="shop-pagination-controls"></div>
+<div class="grid shopgrid" id="shop-grid"></div>
+<div id="sentinel" style="height:1px;margin-bottom:40px;"></div>
 
 <script>
-const SHOPS_PER_PAGE = {{ SHOPS_PER_PAGE|default(40)|int }};
-let currentPage   = {{ page|default(1)|int }};
-let totalPages    = {{ total_pages|default(1)|int }};
-let stockFilter   = '{{ stock_filter }}';   // 'hide' | 'show'
-let typeFilter    = '{{ type_filter }}';    // 'both' | 'buying' | 'selling'
-let currentQuery  = '{{ query }}';
+let shopPage     = 0;
+let shopLoading  = false;
+let shopHasMore  = true;
+let shopQuery    = {{ query|tojson }};
+let stockFilter  = {{ stock_filter|tojson }};
+let typeFilter   = {{ type_filter|tojson }};
 
-document.addEventListener('DOMContentLoaded', () => {
-  const grid = document.querySelector('.shopgrid');
+const grid     = document.getElementById('shop-grid');
+const sentinel = document.getElementById('sentinel');
 
-  const titleCase = str => {
-    if (typeof str !== 'string') return '';
-    return str.toLowerCase().replace(/\w\S*/g, txt =>
-      txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-    );
-  };
+const observer = new IntersectionObserver(
+    e => { if (e[0].isIntersecting) loadMore(); },
+    { rootMargin: '400px' }
+);
+observer.observe(sentinel);
 
-  function renderStockSpace(n) {
-    if (n.type === 'SELLING') {
-      if (n.stock <= 0) return 'Out of stock.';
-      return 'Stock: ' + n.stock;
-    } else {
-      if (n.space <= 0) return 'Out of space.';
-      return 'Space: ' + n.space;
-    }
-  }
+async function loadMore() {
+    if (shopLoading || !shopHasMore) return;
+    shopLoading = true;
+    shopPage++;
+    const params = new URLSearchParams({ page: shopPage, q: shopQuery, stock_filter: stockFilter, type_filter: typeFilter });
+    const data   = await fetch('/shops/data?' + params).then(r => r.json());
+    data.players.forEach(n => grid.appendChild(createCard(n)));
+    shopHasMore = data.has_more;
+    shopLoading = false;
+}
 
-  function renderMeta(n) {
+function reset() {
+    shopPage    = 0;
+    shopHasMore = true;
+    grid.innerHTML = '';
+    loadMore();
+}
+
+function titleCase(str) {
+    return str.toLowerCase().replace(/\w\S*/g, t => t[0].toUpperCase() + t.slice(1));
+}
+
+function renderStockSpace(n) {
+    if (n.type === 'SELLING') return n.stock <= 0 ? 'Out of stock.' : 'Stock: ' + n.stock;
+    return n.space <= 0 ? 'Out of space.' : 'Space: ' + n.space;
+}
+
+function renderMeta(n) {
     if (!n.item || !n.item.meta) return '';
     const meta = n.item.meta;
     const parts = [];
-    if (meta['meta-type'] === 'POTION') parts.push('Potion');
-
-    const enchants = Object.assign(
-      {},
-      meta.enchants || {},
-      meta['stored-enchants'] || {}
-    );
-    const enchKeys = Object.keys(enchants);
-    if (enchKeys.length) {
-      const enchStr = enchKeys.map(k => {
-        const name = k.replace('minecraft:', '').replace(/_/g, ' ')
-                      .replace(/\b\w/g, c => c.toUpperCase());
-        return name + ' ' + enchants[k];
-      }).join(', ');
-      parts.push(enchStr);
+    const enchants = Object.assign({}, meta.enchants || {}, meta['stored-enchants'] || {});
+    const keys = Object.keys(enchants);
+    if (keys.length) {
+        parts.push(keys.map(k => k.replace('minecraft:', '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' ' + enchants[k]).join(', '));
     }
     return parts.join('<br>');
-  }
+}
 
-  function createCard(n) {
-    const rawItemId = n.item && typeof n.item.item === 'string'
-      ? n.item.item
-      : 'unknown';
-    const itemId = rawItemId.toLowerCase();
-
+function createCard(n) {
+    const itemId     = (n.item && n.item.item || 'unknown').toLowerCase();
+    const meta       = n.item && n.item.meta;
     let rawName = null;
-    const meta = n.item && n.item.meta;
-
-    if (meta &&
-        meta['display-name'] &&
-        meta['display-name'].extra &&
-        meta['display-name'].extra.length > 0 &&
-        typeof meta['display-name'].extra[0].text === 'string') {
-      rawName = meta['display-name'].extra[0].text;
-    } else if (typeof rawItemId === 'string') {
-      rawName = rawItemId.replace(/_/g, ' ');
+    if (meta && meta['display-name'] && meta['display-name'].extra && meta['display-name'].extra[0]) {
+        rawName = meta['display-name'].extra[0].text;
     }
-
-    const displayName = titleCase(rawName || 'Unknown Item');
-
+    const displayName = titleCase(rawName || itemId.replace(/_/g, ' '));
     const card = document.createElement('div');
     card.className = 'player-card';
-    card.style.padding = '20px';
-    card.style.boxSizing = 'border-box';
-    card.dataset.name = displayName;
-
+    card.style.cssText = 'padding:20px;box-sizing:border-box;';
     card.innerHTML = `
-      <a href="/shops/${n.id}" style="color:white; line-height:1.2; font-weight:normal;">
-        <img loading="lazy"
-             src="https://api.earthpol.com/textures/item/${itemId}.png"
-             alt="${itemId} image"
-             style="width:80px; height:auto; max-height:180px; object-fit:contain; image-rendering:pixelated;"
-             onerror="this.style.display='none'">
-        <p><b>${displayName}</b></p>
-        <p>
-          <i>${n.type.charAt(0) + n.type.slice(1).toLowerCase()} for</i><br>
-          ${Math.round(n.price)}g per ${n.item.amount} items
-        </p>
-        <p>${renderStockSpace(n)}</p>
-        <p style="font-size:0.75rem; color:lightgray; font-style:italic; line-height:1.1;">
-          ${renderMeta(n)}
-        </p>
-      </a>
-    `;
+        <a href="/shops/${n.id}" style="color:white;line-height:1.2;font-weight:normal;">
+            <img loading="lazy" src="https://api.earthpol.com/textures/item/${itemId}.png"
+                 style="width:80px;height:auto;max-height:180px;object-fit:contain;image-rendering:pixelated;"
+                 onerror="this.style.display='none'">
+            <p><b>${displayName}</b></p>
+            <p><i>${n.type[0] + n.type.slice(1).toLowerCase()} for</i><br>${Math.round(n.price)}g per ${n.item.amount} items</p>
+            <p>${renderStockSpace(n)}</p>
+            <p style="font-size:.75rem;color:lightgray;font-style:italic;line-height:1.1;">${renderMeta(n)}</p>
+        </a>`;
     return card;
-  }
+}
 
-  function renderGrid(items) {
-    grid.innerHTML = '';
-    items.forEach(n => grid.appendChild(createCard(n)));
-  }
-
-  function syncHiddenInputs() {
-    const pageInput  = document.getElementById('shop-search-page');
-    const stockInput = document.getElementById('shop-stock-filter');
-    const typeInput  = document.getElementById('shop-type-filter');
-    if (pageInput)  pageInput.value  = currentPage;
-    if (stockInput) stockInput.value = stockFilter;
-    if (typeInput)  typeInput.value  = typeFilter;
-  }
-
-  async function fetchPage(page) {
-    page = Math.max(1, Math.min(page, totalPages || 1));
-
-    const params = new URLSearchParams({
-      page: page,
-      q: currentQuery || '',
-      stock_filter: stockFilter,
-      type_filter: typeFilter,
-    });
-
-    const res = await fetch(`/shops/data?${params.toString()}`);
-    if (!res.ok) return;
-
-    const data = await res.json();
-    currentPage = data.page;
-    totalPages  = data.total_pages;
-    renderGrid(data.players);
-    renderPaginationControls();
-    syncHiddenInputs();
-  }
-
-  function goToPage(page) {
-    fetchPage(page);
-  }
-
-  function renderPaginationControls() {
-    const container = document.getElementById('shop-pagination-controls');
-    container.innerHTML = '';
-
-    const tp = totalPages || 1;
-
-    function makeLink(text, targetPage, disabled, isCurrent = false) {
-      const el = document.createElement('a');
-      el.textContent = text;
-      el.href = '#';
-      if (isCurrent) el.classList.add('current');
-      if (disabled) {
-        el.classList.add('disabled');
-        el.onclick = e => e.preventDefault();
-      } else {
-        el.onclick = e => {
-          e.preventDefault();
-          goToPage(targetPage);
-        };
-      }
-      return el;
-    }
-
-    container.appendChild(makeLink('« First', 1, currentPage === 1));
-    container.appendChild(makeLink('‹ Prev', currentPage - 1, currentPage === 1));
-
-    let start = currentPage - 2;
-    let end   = currentPage + 2;
-
-    if (start < 1) { end += 1 - start; start = 1; }
-    if (end > tp)  { start -= end - tp; end = tp; }
-    if (start < 1) start = 1;
-
-    const nums = [];
-    for (let i = start; i <= end; i++) nums.push(i);
-    while (nums.length < 5 && nums[0] > 1) nums.unshift(nums[0] - 1);
-    while (nums.length < 5 && nums[nums.length - 1] < tp) nums.push(nums[nums.length - 1] + 1);
-    if (tp < 5) nums.length = tp;
-
-    nums.forEach(n => container.appendChild(
-      makeLink(String(n), n, false, n === currentPage)
-    ));
-
-    container.appendChild(makeLink('Next ›', currentPage + 1, currentPage === tp));
-    container.appendChild(makeLink('Last »', tp, currentPage === tp));
-  }
-
-  const searchForm  = document.getElementById('shop-search-form');
-  const searchInput = document.getElementById('shop-search-input');
-
-  if (searchForm) {
-    searchForm.addEventListener('submit', e => {
-      e.preventDefault();
-      currentQuery = searchInput ? (searchInput.value || '') : '';
-      currentPage = 1;
-      fetchPage(currentPage);
-    });
-  }
-
-  document.querySelectorAll('input[name="stock_filter_radio"]').forEach(r => {
-    r.addEventListener('change', e => {
-      stockFilter = e.target.value;
-      currentPage = 1;
-      fetchPage(currentPage);
-    });
-  });
-
-  document.querySelectorAll('input[name="type_filter_radio"]').forEach(r => {
-    r.addEventListener('change', e => {
-      typeFilter = e.target.value;
-      currentPage = 1;
-      fetchPage(currentPage);
-    });
-  });
-
-  {% if players %}
-  renderGrid({{ players|tojson }});
-  renderPaginationControls();
-  syncHiddenInputs();
-  {% endif %}
+document.getElementById('shop-search').addEventListener('input', function() {
+    shopQuery = this.value.toLowerCase();
+    reset();
 });
+
+document.querySelectorAll('input[name="stock_filter"]').forEach(r =>
+    r.addEventListener('change', e => { stockFilter = e.target.value; reset(); })
+);
+document.querySelectorAll('input[name="type_filter"]').forEach(r =>
+    r.addEventListener('change', e => { typeFilter = e.target.value; reset(); })
+);
+
+reset();
 </script>
 {% endblock %}

@@ -24,12 +24,6 @@
 
 <div id="lb-status" class="lb-status">Loading...</div>
 
-<div class="pagination" id="lb-pagination">
-    <a id="btn-prev" class="disabled">← Prev</a>
-    <span class="filler" id="page-label">Page 1</span>
-    <a id="btn-next" class="disabled">Next →</a>
-</div>
-
 <style>
 .lb-wrap { overflow-x: auto; }
 .lb-table {
@@ -92,20 +86,12 @@
 </style>
 
 <script>
-const PER_PAGE = 50;
 let allPlayers = [];
 let sortCol    = 'kills';
 let sortDesc   = true;
-let page       = 1;
 
-const body      = document.getElementById('lb-body');
-const status    = document.getElementById('lb-status');
-const pageLabel = document.getElementById('page-label');
-const btnPrev   = document.getElementById('btn-prev');
-const btnNext   = document.getElementById('btn-next');
-
-btnPrev.addEventListener('click', () => { if (page > 1)   { page--; render(); } });
-btnNext.addEventListener('click', () => { if (hasNext())  { page++; render(); } });
+const body   = document.getElementById('lb-body');
+const status = document.getElementById('lb-status');
 
 document.querySelectorAll('th[data-col]').forEach(th => {
     th.addEventListener('click', () => {
@@ -139,20 +125,15 @@ async function loadAll() {
     status.classList.add('done');
 }
 
-function hasNext() { return page * PER_PAGE < allPlayers.length; }
-
 function render() {
+    const medals = ['🥇','🥈','🥉'];
     const sorted = [...allPlayers].sort((a, b) => {
         const av = a[sortCol] ?? 0, bv = b[sortCol] ?? 0;
         return sortDesc ? bv - av : av - bv;
     });
 
-    const offset = (page - 1) * PER_PAGE;
-    const slice  = sorted.slice(offset, offset + PER_PAGE);
-    const medals = ['🥇','🥈','🥉'];
-
-    body.innerHTML = slice.map((p, i) => {
-        const rank = offset + i + 1;
+    body.innerHTML = sorted.map((p, i) => {
+        const rank = i + 1;
         return `<tr class="${rank <= 3 ? 'top-'+rank : ''}">
             <td class="col-rank">${rank <= 3 ? medals[rank-1] : rank}</td>
             <td class="col-player">
@@ -173,12 +154,6 @@ function render() {
         th.classList.toggle('active', active);
         th.querySelector('.sort-arrow').textContent = active ? (sortDesc ? '↓' : '↑') : '↕';
     });
-
-    pageLabel.textContent = `Page ${page}`;
-    btnPrev.classList.toggle('disabled', page === 1);
-    btnNext.classList.toggle('disabled', !hasNext());
-    btnPrev.style.pointerEvents = page === 1    ? 'none' : '';
-    btnNext.style.pointerEvents = !hasNext()    ? 'none' : '';
 }
 
 loadAll();

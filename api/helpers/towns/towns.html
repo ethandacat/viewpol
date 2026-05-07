@@ -4,47 +4,60 @@
 {% block content %}
 <h1>Towns</h1>
 
-<div class="search-bar">
-    <form id="search-form">
-        <input type="text" id="search-input" placeholder="Search towns..." value="{{ query }}">
-        <button type="submit">Search</button>
-    </form>
+<div class="search-bar" style="margin-bottom:20px;">
+    <input type="text" id="search-input" placeholder="Search towns..." value="{{ query }}" style="width:280px;">
 </div>
 
-<div class="grid nationgrid" style="visibility: hidden;">
-    {% for town in players %}
-    <div class="player-card" data-name="{{ town.name }}">
+<div class="grid nationgrid" id="grid"></div>
+<div id="sentinel" style="height:1px;margin-bottom:40px;"></div>
+
+<div id="card-pool" style="display:none;">
+    {% for t in players %}
+    <div class="player-card" data-name="{{ t.name }}">
         <img loading="lazy"
-             src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
-             alt="{{ town.name }} flag"
-             style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
+             src="https://cdn.earthpol.com/towns/{{ t.name.replace(' ', '_') }}.png"
+             alt="{{ t.name }} flag"
+             style="width:100%;height:auto;max-height:180px;object-fit:contain;"
              onerror="this.onerror=null;this.src=generateFlagSVG(this.closest('[data-name]').dataset.name);">
-        <a href="/towns/{{ town.uuid }}" style="display: block; text-align: center;">{{ town.name }}</a>
+        <a href="/towns/{{ t.uuid }}" style="display:block;text-align:center;">{{ t.name }}</a>
     </div>
     {% endfor %}
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const grid = document.querySelector('.nationgrid');
-    const allCards = Array.from(grid.querySelectorAll('.player-card'));
+(function() {
+    const BATCH = 50;
+    const grid     = document.getElementById('grid');
+    const sentinel = document.getElementById('sentinel');
+    const allCards = Array.from(document.getElementById('card-pool').children)
+        .sort((a, b) => a.dataset.name.localeCompare(b.dataset.name));
 
-    function render(cards) {
-        grid.innerHTML = '';
-        cards
-            .sort((a, b) => a.dataset.name.toLowerCase().localeCompare(b.dataset.name.toLowerCase()))
-            .forEach(c => grid.appendChild(c));
+    let pool = allCards, shown = 0;
+
+    function showMore() {
+        const next = pool.slice(shown, shown + BATCH);
+        if (!next.length) return;
+        const frag = document.createDocumentFragment();
+        next.forEach(c => frag.appendChild(c));
+        grid.appendChild(frag);
+        shown += next.length;
     }
 
-    document.getElementById('search-form').addEventListener('submit', e => {
-        e.preventDefault();
-        const q = document.getElementById('search-input').value.toLowerCase();
-        render(allCards.filter(c => c.dataset.name.toLowerCase().includes(q)));
+    const observer = new IntersectionObserver(
+        e => { if (e[0].isIntersecting) showMore(); },
+        { rootMargin: '400px' }
+    );
+    observer.observe(sentinel);
+
+    document.getElementById('search-input').addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        pool = q ? allCards.filter(c => c.dataset.name.toLowerCase().includes(q)) : allCards;
+        grid.innerHTML = '';
+        shown = 0;
+        showMore();
     });
 
-    render(allCards);
-    grid.style.visibility = 'visible';
-});
+    showMore();
+})();
 </script>
-
 {% endblock %}
