@@ -5,7 +5,9 @@
 <a href="/players" class="back-link">← Back to Players</a>
 
 <div class="detail-header">
-    <canvas class="head-canvas player-head" data-skin="/skin/{{ data.name }}" width="80" height="80"></canvas>
+    <img class="player-head"
+         src="https://api.mineatar.io/head/{{ data.uuid }}?scale=15&overlay=true&format=png"
+         alt="{{ data.name }}'s head">
     <h1>{{ data.name }}</h1>
     {% if data.title or data.surname %}
     <p class="board-text">{% if data.title %}{{ data.title }} {% endif %}{{ data.name }}{% if data.surname %} {{ data.surname }}{% endif %}</p>
@@ -23,7 +25,9 @@
 <div class="detail-body">
     <div class="detail-left">
         <div class="skin-frame">
-            <canvas class="bust-canvas" data-skin="/skin/{{ data.name }}" width="128" height="160"></canvas>
+            <img loading="lazy"
+                 src="https://vzge.me/bust/{{ data.uuid }}"
+                 alt="{{ data.name }}'s bust">
         </div>
     </div>
 
@@ -80,13 +84,12 @@
 }
 .player-head {
     width: 80px;
-    height: 80px;
+    height: auto;
     border-radius: 8px;
     margin-bottom: 12px;
     display: block;
     margin-left: auto;
     margin-right: auto;
-    image-rendering: pixelated;
 }
 .detail-header h1 {
     font-size: 32px;
@@ -126,11 +129,9 @@
     padding: 16px;
     text-align: center;
 }
-.skin-frame canvas {
+.skin-frame img {
     width: 100%;
-    aspect-ratio: 4 / 5;
-    display: block;
-    image-rendering: pixelated;
+    height: auto;
 }
 
 .detail-right {

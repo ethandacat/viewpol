@@ -14,7 +14,9 @@
 <div class="grid" style="visibility: hidden;" id="player-grid">
     {% for p in players %}
     <div class="player-card" data-name="{{ p.name }}">
-        <canvas class="head-canvas" data-skin="/skin/{{ p.name }}" width="80" height="80"></canvas>
+        <img loading="lazy"
+             src="https://api.mineatar.io/head/{{ p.uuid }}?scale=15&overlay=true&format=png"
+             alt="{{ p.name }}'s head">
         <a href="/players/{{ p.uuid }}">{{ p.name }}</a>
     </div>
     {% endfor %}
