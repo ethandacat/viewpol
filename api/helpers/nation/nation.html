@@ -22,7 +22,6 @@
 </div>
 
 <div class="detail-body">
-    <!-- Left: Map + Flag -->
     <div class="detail-left">
         <div class="map-frame">
             {% if data.coordinates and data.coordinates.spawn
@@ -38,7 +37,6 @@
         </div>
     </div>
 
-    <!-- Right: Info -->
     <div class="detail-right">
 
         <div class="section leadership-section">
@@ -72,60 +70,55 @@
         </div>
 
         <div class="relations-row">
-            <div class="section">
+            <div class="section" data-threshold="10">
                 <h2>🤝 Allies <span class="count">{{ data.allies|length }}</span></h2>
                 {% if data.allies %}
-                    {% for t in data.allies[:10] %}
-                        <a href="/nations/{{ t.uuid }}">{{ t.name }}</a>{% if not loop.last %}, {% endif %}
+                    {% for t in data.allies %}
+                        <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/nations/{{ t.uuid }}">{{ t.name }}</a></span>
                     {% endfor %}
-                    {% if data.allies|length > 10 %}, …{% endif %}
                 {% else %}
                     <span class="none-text">None</span>
                 {% endif %}
             </div>
-            <div class="section">
+            <div class="section" data-threshold="10">
                 <h2>⚔️ Enemies <span class="count">{{ data.enemies|length }}</span></h2>
                 {% if data.enemies %}
-                    {% for o in data.enemies[:10] %}
-                        <a href="/nations/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
+                    {% for o in data.enemies %}
+                        <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/nations/{{ o.uuid }}">{{ o.name }}</a></span>
                     {% endfor %}
-                    {% if data.enemies|length > 10 %}, …{% endif %}
                 {% else %}
                     <span class="none-text">None</span>
                 {% endif %}
             </div>
-            <div class="section">
+            <div class="section" data-threshold="10">
                 <h2>🚫 Sanctioned <span class="count">{{ data.sanctioned|length }}</span></h2>
                 {% if data.sanctioned %}
-                    {% for o in data.sanctioned[:10] %}
-                        <a href="/nations/{{ o.uuid }}">{{ o.name }}</a>{% if not loop.last %}, {% endif %}
+                    {% for o in data.sanctioned %}
+                        <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/nations/{{ o.uuid }}">{{ o.name }}</a></span>
                     {% endfor %}
-                    {% if data.sanctioned|length > 10 %}, …{% endif %}
                 {% else %}
                     <span class="none-text">None</span>
                 {% endif %}
             </div>
         </div>
 
-        <div class="section">
+        <div class="section" data-threshold="20">
             <h2>👥 Residents <span class="count">{{ data.stats.numResidents }}</span></h2>
             {% if data.residents %}
-                {% for r in data.residents[:50] %}
-                    <a href="/players/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
+                {% for r in data.residents %}
+                    <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/players/{{ r.uuid }}">{{ r.name }}</a></span>
                 {% endfor %}
-                {% if data.residents|length > 50 %}, …{% endif %}
             {% else %}
                 <span class="none-text">None</span>
             {% endif %}
         </div>
 
-        <div class="section">
+        <div class="section" data-threshold="20">
             <h2>🏘️ Towns <span class="count">{{ data.stats.numTowns }}</span></h2>
             {% if data.towns %}
-                {% for r in data.towns[:50] %}
-                    <a href="/towns/{{ r.uuid }}">{{ r.name }}</a>{% if not loop.last %}, {% endif %}
+                {% for r in data.towns %}
+                    <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/towns/{{ r.uuid }}">{{ r.name }}</a></span>
                 {% endfor %}
-                {% if data.towns|length > 50 %}, …{% endif %}
             {% else %}
                 <span class="none-text">None</span>
             {% endif %}
@@ -140,11 +133,10 @@
                 {% if members %}
                     <div class="rank-row">
                         <span class="rank-name">{{ rank | capitalize }}</span>
-                        <span class="rank-members">
-                            {% for m in members[:10] %}
-                                <a href="/players/{{ m.uuid }}">{{ m.name }}</a>{% if not loop.last %}, {% endif %}
+                        <span class="rank-members" data-threshold="10">
+                            {% for m in members %}
+                                <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/players/{{ m.uuid }}">{{ m.name }}</a></span>
                             {% endfor %}
-                            {% if members|length > 10 %}, …{% endif %}
                         </span>
                     </div>
                 {% endif %}
@@ -161,8 +153,8 @@
     margin-bottom: 28px;
 }
 .header-flag {
-    width: 120px;
-    height: 60px;
+    width: 160px;
+    height: 80px;
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid #252525;
@@ -221,19 +213,6 @@
     font-size: 14px;
     background: #181818;
 }
-.flag-card {
-    background: #181818;
-    border: 1px solid #252525;
-    border-radius: 10px;
-    padding: 16px;
-    text-align: center;
-}
-.flag-label {
-    margin: 8px 0 0;
-    font-size: 12px;
-    color: #666;
-    font-style: italic;
-}
 
 .detail-right {
     flex: 1;
@@ -248,6 +227,8 @@
     border: 1px solid #252525;
     padding: 14px 16px;
     border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.7;
 }
 .section h2 {
     margin: 0 0 10px;
@@ -259,6 +240,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    line-height: normal;
 }
 .section h2 .count {
     font-size: 12px;
@@ -293,6 +275,7 @@
     gap: 8px;
     margin-top: 6px;
     font-size: 14px;
+    line-height: normal;
 }
 .info-label {
     color: #666;
@@ -327,10 +310,6 @@
     grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
 }
-.relations-row .section {
-    font-size: 13px;
-    line-height: 1.7;
-}
 
 .none-text {
     color: #555;
@@ -354,6 +333,23 @@
 }
 .rank-members { line-height: 1.7; }
 
+.list-entry { display: inline; }
+.entry-hidden { display: none !important; }
+.show-more-btn {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 10px;
+    font-size: 12px;
+    background: #1e1e1e;
+    color: #777;
+    border: 1px solid #2e2e2e;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    vertical-align: middle;
+}
+.show-more-btn:hover { background: #252525; color: #bbb; }
+
 a { color: #4da6ff; text-decoration: none; font-size: inherit; }
 a:hover { color: #7dc0ff; }
 
@@ -363,4 +359,27 @@ a:hover { color: #7dc0ff; }
     .relations-row { grid-template-columns: 1fr; }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-threshold]').forEach(container => {
+        const threshold = parseInt(container.dataset.threshold);
+        const entries = container.querySelectorAll('.list-entry');
+        if (entries.length <= threshold) return;
+
+        entries.forEach((e, i) => {
+            if (i >= threshold) e.classList.add('entry-hidden');
+        });
+
+        const btn = document.createElement('button');
+        btn.className = 'show-more-btn';
+        btn.textContent = `+${entries.length - threshold} more`;
+        btn.onclick = () => {
+            container.querySelectorAll('.entry-hidden').forEach(e => e.classList.remove('entry-hidden'));
+            btn.remove();
+        };
+        container.appendChild(btn);
+    });
+});
+</script>
 {% endblock %}
