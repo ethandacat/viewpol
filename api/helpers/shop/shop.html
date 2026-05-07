@@ -51,6 +51,7 @@
 
         <div class="mc-tooltip">
             <p class="mc-name" style="color:{{ name_color }};">{{ display_name }}</p>
+            <p class="mc-id" style="margin-bottom:2px;">minecraft:{{ data.item.item|lower }}</p>
 
             {% if all_enchants %}
                 <div class="mc-divider"></div>
@@ -71,9 +72,6 @@
                     </p>
                 {% endfor %}
             {% endif %}
-
-            <div class="mc-divider"></div>
-            <p class="mc-id">minecraft:{{ data.item.item|lower }}</p>
         </div>
     </div>
 
@@ -226,27 +224,21 @@
 }
 .mc-tooltip {
     display: none;
-    position: absolute;
-    bottom: calc(100% + 10px);
-    left: 50%;
-    transform: translateX(-50%);
+    position: fixed;
     min-width: 200px;
     max-width: 320px;
     padding: 8px 10px;
     background: #100010;
     border-radius: 3px;
-    z-index: 200;
+    z-index: 9999;
     pointer-events: none;
     text-align: left;
     white-space: nowrap;
-
-    /* Authentic MC tooltip border */
     box-shadow:
         0 0 0 1px #1a001a,
         0 0 0 2px #5000c8,
         0 0 0 3px #1a001a;
 }
-.item-wrap:hover .mc-tooltip { display: block; }
 
 .mc-name {
     font-family: 'Minecraftia', monospace;
@@ -371,7 +363,34 @@ a:hover { color: #7dc0ff; }
 @media (max-width: 900px) {
     .detail-body { flex-direction: column; }
     .detail-left { flex: none; width: 100%; }
-    .mc-tooltip { left: 0; transform: none; }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const wrap    = document.querySelector('.item-wrap');
+    const tooltip = document.querySelector('.mc-tooltip');
+    if (!wrap || !tooltip) return;
+
+    const OFFSET = 14;
+
+    wrap.addEventListener('mouseenter', () => { tooltip.style.display = 'block'; });
+    wrap.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+    wrap.addEventListener('mousemove', e => {
+        const tw = tooltip.offsetWidth;
+        const th = tooltip.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        let x = e.clientX + OFFSET;
+        let y = e.clientY + OFFSET;
+
+        if (x + tw > vw - 8) x = e.clientX - tw - OFFSET;
+        if (y + th > vh - 8) y = e.clientY - th - OFFSET;
+
+        tooltip.style.left = x + 'px';
+        tooltip.style.top  = y + 'px';
+    });
+});
+</script>
 {% endblock %}
