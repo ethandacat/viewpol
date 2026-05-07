@@ -10,7 +10,7 @@
         <tr>
             <th class="col-rank">#</th>
             <th class="col-player">Player</th>
-            <th class="col-num" data-col="kills">Kills <span class="sort-arrow">↓</span></th>
+            <th class="col-num active" data-col="kills">Kills <span class="sort-arrow">↓</span></th>
             <th class="col-num" data-col="deaths">Deaths <span class="sort-arrow">↕</span></th>
             <th class="col-num" data-col="kd">K/D <span class="sort-arrow">↕</span></th>
             <th class="col-num" data-col="assists">Assists <span class="sort-arrow">↕</span></th>
@@ -18,13 +18,13 @@
             <th class="col-num" data-col="damage">Damage <span class="sort-arrow">↕</span></th>
         </tr>
     </thead>
-    <tbody id="lb-body">
-        <tr><td colspan="8" class="loading-cell">Loading...</td></tr>
-    </tbody>
+    <tbody id="lb-body"></tbody>
 </table>
 </div>
 
-<div class="pagination" id="lb-pagination" style="display:none;">
+<div id="lb-status" class="lb-status">Loading...</div>
+
+<div class="pagination" id="lb-pagination">
     <a id="btn-prev" class="disabled">← Prev</a>
     <span class="filler" id="page-label">Page 1</span>
     <a id="btn-next" class="disabled">Next →</a>
@@ -74,7 +74,6 @@
     white-space: nowrap;
     vertical-align: middle;
 }
-.loading-cell { text-align: center; color: #555; font-style: italic; padding: 40px; }
 .col-rank { color: #555; font-size: 13px; width: 44px; text-align: center; }
 .col-player { min-width: 160px; }
 .col-player a { color: #e0e0e0 !important; font-size: 13.5px; font-weight: 500; }
@@ -82,6 +81,14 @@
 .col-num { text-align: right; font-variant-numeric: tabular-nums; }
 .active-col { color: #e0e0e0; font-weight: 600; }
 .lb-head { width: 20px; height: 20px; border-radius: 3px; image-rendering: pixelated; vertical-align: middle; margin-right: 8px; }
+
+.lb-status {
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+    margin: 10px 0 80px;
+}
+.lb-status.done { display: none; }
 </style>
 
 <script>
@@ -91,40 +98,41 @@ let sortCol    = 'kills';
 let sortDesc   = true;
 let page       = 1;
 
-const body     = document.getElementById('lb-body');
-const pag      = document.getElementById('lb-pagination');
+const body      = document.getElementById('lb-body');
+const status    = document.getElementById('lb-status');
 const pageLabel = document.getElementById('page-label');
-const btnPrev  = document.getElementById('btn-prev');
-const btnNext  = document.getElementById('btn-next');
+const btnPrev   = document.getElementById('btn-prev');
+const btnNext   = document.getElementById('btn-next');
 
-fetch('/kitpvp/data')
-    .then(r => r.json())
-    .then(data => {
-        allPlayers = data;
-        render();
-        pag.style.display = '';
-    });
+btnPrev.addEventListener('click', () => { if (page > 1)   { page--; render(); } });
+btnNext.addEventListener('click', () => { if (hasNext())  { page++; render(); } });
 
 document.querySelectorAll('th[data-col]').forEach(th => {
     th.addEventListener('click', () => {
         const col = th.dataset.col;
-        if (sortCol === col) {
-            sortDesc = !sortDesc;
-        } else {
-            sortCol  = col;
-            sortDesc = true;
-        }
+        if (sortCol === col) sortDesc = !sortDesc;
+        else { sortCol = col; sortDesc = true; }
         page = 1;
         render();
     });
 });
 
-btnPrev.addEventListener('click', () => { if (page > 1) { page--; render(); } });
-btnNext.addEventListener('click', () => { if (hasNext()) { page++; render(); } });
-
-function hasNext() {
-    return page * PER_PAGE < allPlayers.length;
+async function loadAll() {
+    let offset = 0;
+    while (true) {
+        const resp = await fetch(`/kitpvp/data?offset=${offset}`);
+        const data = await resp.json();
+        allPlayers.push(...data.items);
+        render();
+        if (!data.hasMore) break;
+        offset += 100;
+        status.textContent = `Loaded ${allPlayers.length} players…`;
+    }
+    status.textContent = `${allPlayers.length} players`;
+    status.classList.add('done');
 }
+
+function hasNext() { return page * PER_PAGE < allPlayers.length; }
 
 function render() {
     const sorted = [...allPlayers].sort((a, b) => {
@@ -134,14 +142,12 @@ function render() {
 
     const offset = (page - 1) * PER_PAGE;
     const slice  = sorted.slice(offset, offset + PER_PAGE);
-
     const medals = ['🥇','🥈','🥉'];
-    const rows = slice.map((p, i) => {
-        const rank    = offset + i + 1;
-        const rankStr = rank <= 3 ? medals[rank-1] : rank;
-        const cls     = rank <= 3 ? `top-${rank}` : '';
-        return `<tr class="${cls}">
-            <td class="col-rank">${rankStr}</td>
+
+    body.innerHTML = slice.map((p, i) => {
+        const rank = offset + i + 1;
+        return `<tr class="${rank <= 3 ? 'top-'+rank : ''}">
+            <td class="col-rank">${rank <= 3 ? medals[rank-1] : rank}</td>
             <td class="col-player">
                 <img src="https://mc-heads.net/avatar/${p.uuid}/20" class="lb-head" onerror="this.style.display='none'">
                 <a href="/players/${p.username}">${p.username}</a>
@@ -153,20 +159,21 @@ function render() {
             <td class="col-num${sortCol==='best_killstreak'?' active-col':''}">${p.best_killstreak}</td>
             <td class="col-num${sortCol==='damage'?' active-col':''}">${Math.floor(p.damage).toLocaleString()}</td>
         </tr>`;
-    });
-    body.innerHTML = rows.join('');
+    }).join('');
 
     document.querySelectorAll('th[data-col]').forEach(th => {
-        const isActive = th.dataset.col === sortCol;
-        th.classList.toggle('active', isActive);
-        th.querySelector('.sort-arrow').textContent = isActive ? (sortDesc ? '↓' : '↑') : '↕';
+        const active = th.dataset.col === sortCol;
+        th.classList.toggle('active', active);
+        th.querySelector('.sort-arrow').textContent = active ? (sortDesc ? '↓' : '↑') : '↕';
     });
 
     pageLabel.textContent = `Page ${page}`;
     btnPrev.classList.toggle('disabled', page === 1);
     btnNext.classList.toggle('disabled', !hasNext());
-    btnPrev.style.pointerEvents = page === 1 ? 'none' : '';
-    btnNext.style.pointerEvents = !hasNext() ? 'none' : '';
+    btnPrev.style.pointerEvents = page === 1    ? 'none' : '';
+    btnNext.style.pointerEvents = !hasNext()    ? 'none' : '';
 }
+
+loadAll();
 </script>
 {% endblock %}
