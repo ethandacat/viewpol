@@ -43,34 +43,31 @@
 {% block title %}{{ display_name }} Shop | ViewPol{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6/dist/tippy.css">
-
 <a href="/shops" class="back-link">← Back to Shops</a>
 
-<!-- Tooltip content (hidden, consumed by Tippy) -->
-<template id="mc-tip-content">
-    <div class="mc-tip">
-        <p class="mc-name" style="color:{{ name_color }};">{{ display_name }}</p>
-        {% if all_enchants %}
-            {% for ench, lvl in all_enchants.items() %}
-                <p class="mc-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</p>
-            {% endfor %}
-        {% endif %}
-        {% if data.item.meta and data.item.meta.lore %}
-            {% for line in data.item.meta.lore %}
-                <p class="mc-lore-line">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</p>
-            {% endfor %}
-        {% endif %}
-    </div>
-</template>
-
 <div class="detail-header">
-    <img id="item-hero" class="item-hero"
-         src="https://api.earthpol.com/textures/item/{{ data.item.item|lower }}.png"
-         alt="{{ display_name }}"
-         onerror="this.style.display='none'">
-    <p class="item-id-sub">minecraft:{{ data.item.item|lower }}</p>
+    <div class="item-wrap">
+        <img id="item-hero" class="item-hero"
+             src="https://api.earthpol.com/textures/item/{{ data.item.item|lower }}.png"
+             alt="{{ display_name }}"
+             onerror="this.style.display='none'">
 
+        <div class="mc-tooltip">
+            <p class="mc-name" style="color:{{ name_color }};">{{ display_name }}</p>
+            {% if all_enchants %}
+                {% for ench, lvl in all_enchants.items() %}
+                    <p class="mc-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</p>
+                {% endfor %}
+            {% endif %}
+            {% if data.item.meta and data.item.meta.lore %}
+                {% for line in data.item.meta.lore %}
+                    <p class="mc-lore-line">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="item-id-sub">minecraft:{{ data.item.item|lower }}</p>
     <h1>{{ display_name }}</h1>
     <div class="stats-bar">
         <span class="type-badge {{ 'badge-sell' if data.type == 'SELLING' else 'badge-buy' }}">{{ data.type|title }}</span>
@@ -164,66 +161,54 @@
 .detail-header { text-align: center; margin-bottom: 28px; }
 .detail-header h1 { font-size: 32px; font-weight: 800; margin: 0 0 10px; }
 
+.item-wrap { display: inline-block; position: relative; margin-bottom: 4px; }
 .item-hero {
     width: 96px; height: 96px;
-    object-fit: contain;
-    image-rendering: pixelated;
-    display: block;
-    margin: 0 auto 4px;
+    object-fit: contain; image-rendering: pixelated;
+    display: block; margin: 0 auto;
     filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
     cursor: default;
 }
 .item-id-sub {
     font-family: 'Minecraftia', monospace;
-    font-size: 11px;
-    color: #555;
-    margin: 0 0 14px;
+    font-size: 11px; color: #555; margin: 0 0 14px;
 }
 
+/* MC-Tooltip authentic border */
+.mc-tooltip {
+    display: none;
+    position: fixed;
+    padding: 0.5em 0.7em;
+    border: 7px solid transparent;
+    border-radius: 3px;
+    border-image: url(https://cdn.jsdelivr.net/gh/laquazi/MC-Tooltip@master/static/img/tooltip-border.png) 30% repeat;
+    background-color: #1E0F1E;
+    opacity: 0.95;
+    z-index: 9999;
+    pointer-events: none;
+    text-align: left;
+    white-space: nowrap;
+    text-shadow: 0.11em 0.11em #303030;
+    word-spacing: 0.2em;
+    line-height: 1.4em;
+}
+.mc-name     { font-family:'Minecraftia',monospace; font-size:15px; margin:0 0 3px; line-height:1.4; }
+.mc-enchant  { font-family:'Minecraftia',monospace; font-size:13px; color:#AAAAAA; margin:1px 0; line-height:1.4; }
+.mc-lore-line{ font-family:'Minecraftia',monospace; font-size:12px; margin:1px 0; line-height:1.4; }
+.mc-text     { font-family:'Minecraftia',monospace; font-size:12px; line-height:1.5; margin:0 0 4px; }
+
 .stats-bar {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: #777;
-    font-size: 13.5px;
-    background: #181818;
-    border: 1px solid #252525;
-    padding: 7px 18px;
-    border-radius: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: inline-flex; align-items: center; gap: 10px;
+    color: #777; font-size: 13.5px;
+    background: #181818; border: 1px solid #252525;
+    padding: 7px 18px; border-radius: 20px;
+    flex-wrap: wrap; justify-content: center;
 }
 .stats-sep { color: #333; }
-.type-badge {
-    font-size: 11px; font-weight: 700;
-    padding: 2px 10px; border-radius: 20px;
-    letter-spacing: 0.5px; text-transform: uppercase;
-}
+.type-badge { font-size:11px; font-weight:700; padding:2px 10px; border-radius:20px; letter-spacing:.5px; text-transform:uppercase; }
 .badge-sell { background:rgba(37,99,235,.15); color:#60a5fa; border:1px solid rgba(37,99,235,.3); }
 .badge-buy  { background:rgba(74,222,128,.1);  color:#4ade80; border:1px solid rgba(74,222,128,.25); }
 
-/* Tippy Minecraft theme */
-.tippy-box[data-theme~="minecraft"] {
-    background: rgba(16, 0, 16, 0.94);
-    border-radius: 3px;
-    padding: 0;
-    background:
-        linear-gradient(#100010, #100010) padding-box,
-        linear-gradient(180deg, #5000FF 0%, #28007F 100%) border-box;
-    border: 2px solid transparent;
-    box-shadow: 0 0 0 1px #0d000d, inset 0 0 0 1px #0d000d;
-}
-.tippy-box[data-theme~="minecraft"] .tippy-content { padding: 10px 14px; }
-.tippy-box[data-theme~="minecraft"] .tippy-arrow  { display: none; }
-
-.mc-tip { text-align: left; white-space: nowrap; }
-.mc-name    { font-family:'Minecraftia',monospace; font-size:16px; margin:0 0 4px; line-height:1.4; }
-.mc-enchant { font-family:'Minecraftia',monospace; font-size:14px; color:#AAAAAA; margin:2px 0; line-height:1.4; }
-.mc-lore-line { font-family:'Minecraftia',monospace; font-size:13px; margin:2px 0; line-height:1.4; }
-
-.mc-text { font-family:'Minecraftia',monospace; font-size:12px; line-height:1.5; margin:0 0 4px; }
-
-/* Body layout */
 .detail-body { display:flex; gap:20px; align-items:flex-start; }
 .detail-left { flex:0 0 380px; }
 .map-frame { width:100%; height:340px; border-radius:10px; overflow:hidden; border:1px solid #252525; }
@@ -247,22 +232,23 @@ a:hover { color:#7dc0ff; }
 }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const tpl = document.getElementById('mc-tip-content');
-    if (!tpl) return;
+    const hero    = document.getElementById('item-hero');
+    const tooltip = document.querySelector('.mc-tooltip');
+    if (!hero || !tooltip) return;
 
-    tippy('#item-hero', {
-        content: tpl.innerHTML,
-        allowHTML: true,
-        theme: 'minecraft',
-        followCursor: true,
-        animation: false,
-        arrow: false,
-        placement: 'bottom-start',
-        offset: [12, 12],
+    const OFFSET = 14;
+    hero.addEventListener('mouseenter', () => { tooltip.style.display = 'block'; });
+    hero.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+    hero.addEventListener('mousemove', e => {
+        const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+        const vw = window.innerWidth,   vh = window.innerHeight;
+        let x = e.clientX + OFFSET, y = e.clientY + OFFSET;
+        if (x + tw > vw - 8) x = e.clientX - tw - OFFSET;
+        if (y + th > vh - 8) y = e.clientY - th - OFFSET;
+        tooltip.style.left = x + 'px';
+        tooltip.style.top  = y + 'px';
     });
 });
 </script>
