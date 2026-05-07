@@ -55,14 +55,7 @@
             </div>
         </div>
 
-        {% if shops %}
-        <div class="section">
-            <h2>🏦 Shops <span class="count">{{ shops|length }}</span></h2>
-            <div class="shopgrid" id="player-shop-grid" style="margin-top:8px;"></div>
-        </div>
-        {% endif %}
-
-<div class="section" data-threshold="20">
+        <div class="section" data-threshold="20">
             <h2>👥 Friends <span class="count">{{ data.friends | length }}</span></h2>
             {% if data.friends %}
                 {% for f in data.friends %}
@@ -72,6 +65,31 @@
                 <span class="none-text">None</span>
             {% endif %}
         </div>
+
+        {% if shops %}
+        <div class="section" id="player-shops-section">
+            <h2>🏦 Shops <span class="count" id="shop-visible-count">{{ shops|length }}</span></h2>
+            <div class="shop-controls">
+                <input type="text" id="shop-search" placeholder="Search items...">
+                <div class="filter-group">
+                    <input type="radio" id="ps-both" name="ps_type" value="both" checked>
+                    <label for="ps-both">Both</label>
+                    <input type="radio" id="ps-buying" name="ps_type" value="buying">
+                    <label for="ps-buying">Buying</label>
+                    <input type="radio" id="ps-selling" name="ps_type" value="selling">
+                    <label for="ps-selling">Selling</label>
+                </div>
+                <div class="filter-group">
+                    <input type="radio" id="ps-hide" name="ps_stock" value="hide" checked>
+                    <label for="ps-hide">Hide out of stock</label>
+                    <input type="radio" id="ps-show" name="ps_stock" value="show">
+                    <label for="ps-show">Show all</label>
+                </div>
+            </div>
+            <div class="shopgrid" id="player-shop-grid" style="margin-top:10px;"></div>
+            <button id="shop-show-more" class="show-more-btn" style="display:none; width:100%; margin-top:10px;"></button>
+        </div>
+        {% endif %}
 
     </div>
 </div>
@@ -223,8 +241,32 @@
 a { color: #4da6ff; text-decoration: none; font-size: inherit; }
 a:hover { color: #7dc0ff; }
 
+.shop-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 4px;
+}
+.shop-controls input[type="text"] {
+    padding: 6px 10px;
+    font-size: 12.5px;
+    font-family: inherit;
+    border-radius: 7px;
+    border: 1px solid #272727;
+    background: #141414;
+    color: #e0e0e0;
+    outline: none;
+    width: 180px;
+    transition: border-color 0.15s;
+}
+.shop-controls input[type="text"]:focus { border-color: #3d7bd6; }
+.shop-controls input[type="text"]::placeholder { color: #555; }
+
 @media (max-width: 700px) {
     .stats-bar { flex-wrap: wrap; justify-content: center; }
+    .shop-controls { flex-direction: column; align-items: stretch; }
+    .shop-controls input[type="text"] { width: 100%; }
 }
 </style>
 
@@ -252,28 +294,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const SHOPS = {{ shops|tojson if shops else '[]' }};
     const shopGrid = document.getElementById('player-shop-grid');
     if (shopGrid && SHOPS.length) {
+        const INITIAL_SHOW = 8;
         const titleCase = s => s.toLowerCase().replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.substr(1));
+        let typeFilter = 'both', stockFilter = 'hide', searchQuery = '';
 
-        SHOPS.forEach(n => {
+        function makeCard(n) {
             const rawId = (n.item && n.item.item) ? n.item.item : 'unknown';
             const meta = n.item && n.item.meta;
             let rawName = null;
             if (meta && meta['display-name'] && meta['display-name'].extra && meta['display-name'].extra[0])
                 rawName = meta['display-name'].extra[0].text;
             const displayName = titleCase((rawName || rawId).replace(/_/g, ' '));
-
             const enchants = Object.assign({}, meta && meta.enchants || {}, meta && meta['stored-enchants'] || {});
             const enchStr = Object.keys(enchants).map(k =>
                 k.replace('minecraft:','').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) + ' ' + enchants[k]
             ).join(', ');
-
             const stockLine = n.type === 'SELLING'
                 ? (n.stock <= 0 ? 'Out of stock.' : 'Stock: ' + n.stock)
                 : (n.space <= 0 ? 'Out of space.' : 'Space: ' + n.space);
-
             const card = document.createElement('div');
             card.className = 'player-card';
-            card.style.cssText = 'padding:20px; box-sizing:border-box;';
+            card.style.cssText = 'padding:20px;box-sizing:border-box;';
             card.innerHTML = `
                 <a href="/shops/${n.id}" style="color:white;line-height:1.2;font-weight:normal;">
                     <img loading="lazy" src="https://api.earthpol.com/textures/item/${rawId.toLowerCase()}.png"
@@ -284,8 +325,53 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>${stockLine}</p>
                     ${enchStr ? `<p style="font-size:.75rem;color:lightgray;font-style:italic;">${enchStr}</p>` : ''}
                 </a>`;
-            shopGrid.appendChild(card);
+            return card;
+        }
+
+        function renderShops(showAll) {
+            let filtered = SHOPS.filter(n => {
+                if (typeFilter === 'buying' && n.type !== 'BUYING') return false;
+                if (typeFilter === 'selling' && n.type !== 'SELLING') return false;
+                if (stockFilter === 'hide') {
+                    if (n.type === 'SELLING' && n.stock <= 0) return false;
+                    if (n.type === 'BUYING' && n.space <= 0) return false;
+                }
+                if (searchQuery) {
+                    const name = (n.item && n.item.item ? n.item.item : '').replace(/_/g,' ').toLowerCase();
+                    if (!name.includes(searchQuery)) return false;
+                }
+                return true;
+            });
+
+            shopGrid.innerHTML = '';
+            const visible = showAll ? filtered : filtered.slice(0, INITIAL_SHOW);
+            visible.forEach(n => shopGrid.appendChild(makeCard(n)));
+
+            document.getElementById('shop-visible-count').textContent = filtered.length;
+
+            const moreBtn = document.getElementById('shop-show-more');
+            const hidden = filtered.length - visible.length;
+            if (hidden > 0 && !showAll) {
+                moreBtn.textContent = `+ ${hidden} more`;
+                moreBtn.style.display = 'block';
+                moreBtn.onclick = () => renderShops(true);
+            } else {
+                moreBtn.style.display = 'none';
+            }
+        }
+
+        document.getElementById('shop-search').addEventListener('input', e => {
+            searchQuery = e.target.value.toLowerCase();
+            renderShops(false);
         });
+        document.querySelectorAll('input[name="ps_type"]').forEach(r =>
+            r.addEventListener('change', e => { typeFilter = e.target.value; renderShops(false); })
+        );
+        document.querySelectorAll('input[name="ps_stock"]').forEach(r =>
+            r.addEventListener('change', e => { stockFilter = e.target.value; renderShops(false); })
+        );
+
+        renderShops(false);
     }
 });
 </script>
