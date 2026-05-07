@@ -6,8 +6,8 @@
 
 <div class="detail-header">
     <img class="player-head"
-         src="https://api.mineatar.io/head/{{ data.uuid }}?scale=15&overlay=true&format=png"
-         alt="{{ data.name }}'s head">
+         src="https://vzge.me/bust/100/{{ data.name }}"
+         alt="{{ data.name }}'s bust">
     <h1>{{ data.name }}</h1>
     {% if data.title or data.surname %}
     <p class="board-text">{% if data.title %}{{ data.title }} {% endif %}{{ data.name }}{% if data.surname %} {{ data.surname }}{% endif %}</p>
@@ -26,8 +26,8 @@
     <div class="detail-left">
         <div class="skin-frame">
             <img loading="lazy"
-                 src="https://api.mineatar.io/body/full/{{ data.uuid }}?scale=10&overlay=true&format=png"
-                 alt="{{ data.name }}'s skin">
+                 src="https://vzge.me/bust/250/{{ data.name }}"
+                 alt="{{ data.name }}'s bust">
         </div>
     </div>
 
@@ -83,9 +83,8 @@
     margin-bottom: 28px;
 }
 .player-head {
-    width: 64px;
-    height: 64px;
-    image-rendering: pixelated;
+    width: 80px;
+    height: auto;
     border-radius: 8px;
     margin-bottom: 12px;
     display: block;
@@ -131,7 +130,6 @@
     text-align: center;
 }
 .skin-frame img {
-    image-rendering: pixelated;
     width: 100%;
     height: auto;
 }
