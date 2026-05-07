@@ -294,12 +294,11 @@ a:hover { color:#7dc0ff; }
     image-rendering: pixelated;
 }
 #book-text-area {
-    /* 12 lines × 35px = 420px; image 460px → 20px border top/bottom */
     position: absolute;
-    top: 20px;
+    top: 30px;
     left: 30px;
     right: 30px;
-    height: 420px;
+    height: 380px; /* 460 - 30 top - 50 bottom */
     overflow: hidden;
 }
 #book-page-text {
