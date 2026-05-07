@@ -225,52 +225,54 @@
 .mc-tooltip {
     display: none;
     position: fixed;
-    min-width: 200px;
-    max-width: 320px;
-    padding: 8px 10px;
-    background: #100010;
+    min-width: 240px;
+    max-width: 420px;
+    padding: 10px 14px;
     border-radius: 3px;
     z-index: 9999;
     pointer-events: none;
     text-align: left;
     white-space: nowrap;
-    box-shadow:
-        0 0 0 1px #1a001a,
-        0 0 0 2px #5000c8,
-        0 0 0 3px #1a001a;
+
+    /* Gradient border: top #5000FF → bottom #28007F, with dark outer frame */
+    background:
+        linear-gradient(#100010, #100010) padding-box,
+        linear-gradient(180deg, #5000FF 0%, #28007F 100%) border-box;
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 1px #0d000d, inset 0 0 0 1px #0d000d;
 }
 
 .mc-name {
     font-family: 'Minecraftia', monospace;
-    font-size: 12px;
-    margin: 0 0 4px;
+    font-size: 16px;
+    margin: 0 0 1px;
     line-height: 1.4;
 }
 .mc-enchant {
     font-family: 'Minecraftia', monospace;
-    font-size: 11px;
-    color: #9955ff;
-    margin: 1px 0;
+    font-size: 14px;
+    color: #7F7FFF;
+    margin: 2px 0;
     line-height: 1.4;
 }
 .mc-lore-line {
     font-family: 'Minecraftia', monospace;
-    font-size: 11px;
-    margin: 1px 0;
+    font-size: 13px;
+    margin: 2px 0;
     line-height: 1.4;
 }
 .mc-id {
     font-family: 'Minecraftia', monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: #555;
-    margin: 0;
+    margin: 0 0 2px;
     line-height: 1.4;
 }
 .mc-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #5000c8 30%, #5000c8 70%, transparent);
-    margin: 5px 0;
-    opacity: 0.6;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #5000c8 20%, #28007F 80%, transparent);
+    margin: 6px 0;
+    opacity: 0.8;
 }
 .mc-text {
     font-family: 'Minecraftia', monospace;
