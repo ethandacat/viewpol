@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}{{ display_name }} | ViewPol{% endblock %}
+
+{% block content %}
+<a href="/items" class="back-link">← Back to Items</a>
+
+<div style="text-align:center;margin-bottom:28px;">
+    <img src="https://api.earthpol.com/textures/item/{{ item_id }}.png"
+         onerror="this.style.display='none'"
+         style="width:80px;height:80px;image-rendering:pixelated;display:block;margin:0 auto 10px;">
+    <h1 style="color:{{ name_color }};margin:0;">{{ display_name }}</h1>
+</div>
+
+<div class="item-columns">
+
+    <!-- BUYING -->
+    <div class="item-col">
+        <div class="col-header">
+            <span>💰 Buying</span>
+            <span class="count">{{ buying|length }}</span>
+        </div>
+        <p class="col-sub">Shops purchasing this item — highest price first</p>
+        {% if buying %}
+            <a href="/shops/{{ buying[0].id }}" class="price-card featured">
+                <div class="pc-label">Best price</div>
+                <div class="pc-price">{{ buying[0].price|round(2) }}g <span class="pc-per">per {{ buying[0].item.amount }}</span></div>
+                <div class="pc-unit">{{ buying[0].unit_price|round(3) }}g / item</div>
+                <div class="pc-stock">Space: {{ buying[0].space }}</div>
+            </a>
+            {% if buying|length > 1 %}
+            <div class="price-grid">
+                {% for s in buying[1:] %}
+                <a href="/shops/{{ s.id }}" class="price-card mini">
+                    <div class="pc-price">{{ s.price|round(2) }}g <span class="pc-per">per {{ s.item.amount }}</span></div>
+                    <div class="pc-unit">{{ s.unit_price|round(3) }}g / item</div>
+                    <div class="pc-stock">Space: {{ s.space }}</div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% else %}
+            <p class="none-text">No shops buying this item.</p>
+        {% endif %}
+    </div>
+
+    <!-- SELLING -->
+    <div class="item-col">
+        <div class="col-header">
+            <span>🏷️ Selling</span>
+            <span class="count">{{ selling|length }}</span>
+        </div>
+        <p class="col-sub">Shops selling this item — lowest price first</p>
+        {% if selling %}
+            <a href="/shops/{{ selling[0].id }}" class="price-card featured">
+                <div class="pc-label">Best price</div>
+                <div class="pc-price">{{ selling[0].price|round(2) }}g <span class="pc-per">per {{ selling[0].item.amount }}</span></div>
+                <div class="pc-unit">{{ selling[0].unit_price|round(3) }}g / item</div>
+                <div class="pc-stock">Stock: {{ selling[0].stock }}</div>
+            </a>
+            {% if selling|length > 1 %}
+            <div class="price-grid">
+                {% for s in selling[1:] %}
+                <a href="/shops/{{ s.id }}" class="price-card mini">
+                    <div class="pc-price">{{ s.price|round(2) }}g <span class="pc-per">per {{ s.item.amount }}</span></div>
+                    <div class="pc-unit">{{ s.unit_price|round(3) }}g / item</div>
+                    <div class="pc-stock">Stock: {{ s.stock }}</div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% else %}
+            <p class="none-text">No shops selling this item.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<style>
+.item-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+.item-col { display: flex; flex-direction: column; gap: 10px; }
+.col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.col-header .count {
+    font-size: 12px;
+    background: #252525;
+    color: #888;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+}
+.col-sub { font-size: 12px; color: #555; margin: -4px 0 4px; }
+
+.price-card {
+    display: block;
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+}
+.price-card:hover { border-color: #3a3a3a; transform: translateY(-2px); }
+.price-card.featured {
+    border-color: #2563eb44;
+    background: #141c2e;
+    padding: 18px 20px;
+}
+.price-card.featured:hover { border-color: #2563eb88; }
+.pc-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4da6ff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.pc-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #f0f0f0;
+    line-height: 1.2;
+}
+.price-card.mini .pc-price { font-size: 15px; }
+.pc-per { font-size: 13px; font-weight: 400; color: #888; }
+.pc-unit { font-size: 12px; color: #666; margin-top: 3px; }
+.pc-stock { font-size: 12px; color: #555; margin-top: 4px; }
+
+.price-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.none-text { color: #555; font-size: 13px; font-style: italic; }
+
+@media (max-width: 700px) {
+    .item-columns { grid-template-columns: 1fr; }
+    .price-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
