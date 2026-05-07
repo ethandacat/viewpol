@@ -19,17 +19,6 @@
     "white":        "#FFFFFF"
 } %}
 
-{% if data.item.meta and data.item.meta['display-name'] and data.item.meta['display-name'] is mapping and data.item.meta['display-name'].extra and data.item.meta['display-name'].extra|length > 0 %}
-    {% set display_name = data.item.meta['display-name'].extra[0].text | title %}
-    {% set name_color   = '#FF55FF' %}
-{% elif data.item.meta and (data.item.meta.enchants or data.item.meta['stored-enchants']) %}
-    {% set display_name = data.item.item.replace('_', ' ') | title %}
-    {% set name_color   = '#55FFFF' %}
-{% else %}
-    {% set display_name = data.item.item.replace('_', ' ') | title %}
-    {% set name_color   = '#FFFFFF' %}
-{% endif %}
-
 {% set all_enchants = {} %}
 {% if data.item.meta %}
     {% if data.item.meta.enchants %}
@@ -60,7 +49,7 @@
         <div id="minetip-data-enchants">{% for ench, lvl in all_enchants.items() %}<span class="minetip-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</span>{% endfor %}</div>
         {% endif %}
         {% if data.item.meta and data.item.meta.lore %}
-        <div id="minetip-data-lore">{% for line in data.item.meta.lore %}<span class="minetip-lore">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</span>{% endfor %}</div>
+        <div id="minetip-data-lore"><span class="minetip-spacer"></span>{% for line in data.item.meta.lore %}<span class="minetip-lore">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</span>{% endfor %}</div>
         {% endif %}
     </div>
 
@@ -212,7 +201,8 @@
 }
 #minetip-tooltip .minetip-title    { display: block; }
 #minetip-tooltip .minetip-enchant  { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; }
-#minetip-tooltip .minetip-lore     { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; margin-top: 0.25em; font-style: italic; }
+#minetip-tooltip .minetip-lore     { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; font-style: italic; }
+#minetip-tooltip .minetip-spacer   { display: block; height: 0.4em; }
 .mc-text { font-family:'Minecraftia',sans-serif; font-size:12px; line-height:1.5; margin:0 0 4px; }
 
 .stats-bar {
