@@ -14,9 +14,7 @@
 <div class="grid" style="visibility: hidden;" id="player-grid">
     {% for p in players %}
     <div class="player-card" data-name="{{ p.name }}">
-        <img loading="lazy"
-             src="https://starlightskins.lunareclipse.studio/render/mojavatar/{{ p.uuid }}/bust"
-             alt="{{ p.name }}'s bust">
+        <canvas class="head-canvas" data-skin="/skin/{{ p.name }}" width="80" height="80"></canvas>
         <a href="/players/{{ p.uuid }}">{{ p.name }}</a>
     </div>
     {% endfor %}

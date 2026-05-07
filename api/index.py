@@ -9,6 +9,7 @@ from api.helpers.player import player
 from api.helpers.players import players
 from api.helpers.shop import shop
 from api.helpers.shops import shops
+from api.helpers.skin import skin
 from api.helpers.town import town
 from api.helpers.towns import towns
 from api.helpers.errors import errors
@@ -24,6 +25,7 @@ app.register_blueprint(player.app)
 app.register_blueprint(players.app)
 app.register_blueprint(shop.app)
 app.register_blueprint(shops.app)
+app.register_blueprint(skin.app)
 app.register_blueprint(town.app)
 app.register_blueprint(towns.app)
 app.register_blueprint(errors.app)

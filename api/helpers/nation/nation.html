@@ -39,9 +39,7 @@
     <div class="detail-right">
 
         <div class="section leadership-section">
-            <img class="leader-bust"
-                 src="https://starlightskins.lunareclipse.studio/render/mojavatar/{{ data.king.uuid }}/bust"
-                 alt="{{ data.king.name }}">
+            <canvas class="bust-canvas leader-bust" data-skin="/skin/{{ data.king.name }}" width="120" height="160"></canvas>
             <h2>👑 Leadership</h2>
             <div class="info-row">
                 <span class="info-label">King</span>
@@ -262,6 +260,7 @@
     right: 10px;
     height: 100%;
     width: auto;
+    aspect-ratio: 3 / 4;
     margin: 0;
     image-rendering: pixelated;
     filter: drop-shadow(0 4px 14px rgba(0,0,0,0.6));
