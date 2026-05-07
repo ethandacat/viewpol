@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}{{ siege.name }} | ViewPol{% endblock %}
+
+{% block content %}
+<a href="/sieges" class="back-link">← Back to Sieges</a>
+
+<div style="text-align:center;margin-bottom:28px;">
+    <h1 style="margin:0 0 6px;">{{ siege.name }}</h1>
+    <span class="siege-badge {% if siege.isActive %}badge-active{% else %}badge-inactive{% endif %}" style="font-size:12px;">
+        {{ "Active" if siege.isActive else siege.status | capitalize }}
+    </span>
+    <div style="font-size:13px;color:#666;margin-top:8px;">{{ siege.type | replace("_", " ") | title }}</div>
+</div>
+
+<!-- Matchup -->
+<div class="matchup-row">
+    <div class="faction-box attacker">
+        <div class="faction-role">⚔️ Attacker</div>
+        <div class="faction-name">{{ siege.attacker }}</div>
+        <div class="faction-pts">{{ siege.attackerPoints }} <span>pts</span></div>
+    </div>
+    <div class="matchup-center">
+        <div class="balance-label">Balance</div>
+        <div class="balance-val {% if siege.balance > 0 %}positive{% elif siege.balance < 0 %}negative{% endif %}">
+            {{ siege.balance if siege.balance > 0 else siege.balance }}
+        </div>
+        <div class="sessions-label">Sessions {{ siege.sessionsCompleted }}/{{ siege.sessionsCompleted + siege.sessionsLeft }}</div>
+        {% set total = siege.sessionsCompleted + siege.sessionsLeft %}
+        {% if total > 0 %}
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" style="width:{{ (siege.sessionsCompleted / total * 100) | int }}%"></div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="faction-box defender">
+        <div class="faction-role">🛡️ Defender</div>
+        <div class="faction-name">{{ siege.defender }}</div>
+        <div class="faction-pts">{{ siege.defenderPoints }} <span>pts</span></div>
+    </div>
+</div>
+
+<!-- Info row -->
+<div class="info-row">
+    {% if siege.bannerLocation %}
+    <div class="info-card">
+        <div class="info-label">Banner Location</div>
+        <div class="info-val">{{ siege.bannerLocation.world }}</div>
+        <div class="info-sub">X {{ siege.bannerLocation.x }}, Y {{ siege.bannerLocation.y }}, Z {{ siege.bannerLocation.z }}</div>
+    </div>
+    {% endif %}
+    {% if siege.startedAtMillis %}
+    <div class="info-card">
+        <div class="info-label">Started</div>
+        <div class="info-val" id="started-time" data-ms="{{ siege.startedAtMillis }}">—</div>
+    </div>
+    {% endif %}
+    {% if siege.endedAtMillis %}
+    <div class="info-card">
+        <div class="info-label">Ended</div>
+        <div class="info-val" id="ended-time" data-ms="{{ siege.endedAtMillis }}">—</div>
+    </div>
+    {% endif %}
+    <div class="info-card">
+        <div class="info-label">Session Balance</div>
+        <div class="info-val">{{ siege.sessionBalance }}</div>
+    </div>
+</div>
+
+<!-- Battle Sessions -->
+{% if siege.battleSessions and siege.battleSessions | length > 0 %}
+<h2 style="font-size:15px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;margin:32px 0 14px;">
+    Battle Sessions <span style="font-size:12px;background:#252525;color:#888;padding:1px 8px;border-radius:10px;font-weight:500;text-transform:none;letter-spacing:0;">{{ siege.battleSessions | length }}</span>
+</h2>
+<div class="sessions-list">
+    {% for session in siege.battleSessions %}
+    <div class="session-card">
+        <div class="session-header">
+            <span class="session-num">Session {{ loop.index }}</span>
+        </div>
+
+        {% if session.kills and session.kills | length > 0 %}
+        <div class="session-section-label">Kills</div>
+        <div class="kills-list">
+            {% for kill in session.kills %}
+            <div class="kill-row">
+                <span class="kill-attacker">{{ kill.attacker }}</span>
+                <span class="kill-arrow">→</span>
+                <span class="kill-victim">{{ kill.victim }}</span>
+                {% if kill.isAttackerSide is defined %}
+                <span class="kill-side {% if kill.isAttackerSide %}side-att{% else %}side-def{% endif %}">
+                    {{ "ATK" if kill.isAttackerSide else "DEF" }}
+                </span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if session.bannerControl and session.bannerControl | length > 0 %}
+        <div class="session-section-label" style="margin-top:10px;">Banner Control</div>
+        <div class="banner-list">
+            {% for event in session.bannerControl %}
+            <div class="banner-row {% if event.isAttackerSide %}att{% else %}def{% endif %}">
+                <span class="banner-player">{{ event.player }}</span>
+                <span class="banner-side">{{ "Attacker" if event.isAttackerSide else "Defender" }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if (not session.kills or session.kills | length == 0) and (not session.bannerControl or session.bannerControl | length == 0) %}
+        <div style="font-size:12px;color:#555;font-style:italic;">No recorded events.</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<style>
+.siege-badge {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px;
+    text-transform: uppercase; letter-spacing: 0.4px; display: inline-block;
+}
+.badge-active   { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.badge-inactive { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #2a2a2a; }
+
+/* Matchup */
+.matchup-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.faction-box {
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+.faction-box.attacker { border-color: #7f1d1d44; background: #1a1414; }
+.faction-box.defender { border-color: #1e3a5f44; background: #141820; }
+.faction-role { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.faction-name { font-size: 17px; font-weight: 700; color: #f0f0f0; margin-bottom: 8px; }
+.faction-box.attacker .faction-pts { font-size: 22px; font-weight: 800; color: #f87171; }
+.faction-box.defender .faction-pts { font-size: 22px; font-weight: 800; color: #60a5fa; }
+.faction-pts span { font-size: 13px; font-weight: 400; color: #666; }
+
+.matchup-center { text-align: center; }
+.balance-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.balance-val { font-size: 28px; font-weight: 800; color: #888; margin-bottom: 8px; }
+.balance-val.positive { color: #f87171; }
+.balance-val.negative { color: #60a5fa; }
+.sessions-label { font-size: 12px; color: #555; margin-bottom: 6px; }
+.progress-bar-wrap { width: 80px; height: 4px; background: #222; border-radius: 4px; margin: 0 auto; }
+.progress-bar-fill { height: 100%; background: #2563eb; border-radius: 4px; }
+
+/* Info row */
+.info-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.info-card {
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+.info-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+.info-val   { font-size: 15px; font-weight: 600; color: #e0e0e0; }
+.info-sub   { font-size: 12px; color: #666; margin-top: 3px; }
+
+/* Sessions */
+.sessions-list { display: flex; flex-direction: column; gap: 12px; }
+.session-card {
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+.session-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.session-num { font-size: 13px; font-weight: 700; color: #aaa; }
+.session-section-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+.kills-list { display: flex; flex-direction: column; gap: 4px; }
+.kill-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 4px 8px;
+    background: #141414;
+    border-radius: 6px;
+}
+.kill-attacker { color: #f87171; font-weight: 500; }
+.kill-arrow    { color: #444; }
+.kill-victim   { color: #aaa; }
+.kill-side {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 6px;
+    text-transform: uppercase;
+}
+.kill-side.side-att { background: rgba(239,68,68,0.15); color: #f87171; }
+.kill-side.side-def { background: rgba(96,165,250,0.15); color: #60a5fa; }
+
+.banner-list { display: flex; flex-direction: column; gap: 4px; }
+.banner-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.banner-row.att { background: rgba(239,68,68,0.08); }
+.banner-row.def { background: rgba(96,165,250,0.08); }
+.banner-player { color: #e0e0e0; font-weight: 500; }
+.banner-row.att .banner-side { font-size: 11px; color: #f87171; font-weight: 600; }
+.banner-row.def .banner-side { font-size: 11px; color: #60a5fa; font-weight: 600; }
+
+@media (max-width: 700px) {
+    .matchup-row { grid-template-columns: 1fr; }
+    .matchup-center { order: -1; }
+}
+</style>
+
+<script>
+function fmtTime(ms) {
+    const d = new Date(ms);
+    return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) +
+           ' ' + d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+}
+document.querySelectorAll('[data-ms]').forEach(el => {
+    el.textContent = fmtTime(parseInt(el.dataset.ms));
+});
+</script>
+{% endblock %}

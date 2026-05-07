@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Sieges | ViewPol{% endblock %}
+
+{% block content %}
+<h1>Sieges</h1>
+
+<div class="siege-meta">
+    <div class="meta-pill">
+        <span class="meta-label">Active Sieges</span>
+        <span class="meta-value">{{ active_count }}</span>
+    </div>
+    {% if time_remaining > 0 %}
+    <div class="meta-pill">
+        <span class="meta-label">Battle Session</span>
+        <span class="meta-value" id="session-remaining">{{ (time_remaining / 60000) | int }}m remaining</span>
+    </div>
+    {% elif time_till > 0 %}
+    <div class="meta-pill">
+        <span class="meta-label">Next Battle Session</span>
+        <span class="meta-value" id="session-till">in {{ (time_till / 60000) | int }}m</span>
+    </div>
+    {% endif %}
+</div>
+
+{% if not sieges %}
+    <p style="text-align:center;color:#555;font-style:italic;">No active sieges.</p>
+{% else %}
+<div class="sieges-grid">
+    {% for siege in sieges %}
+    <a href="/sieges/{{ siege.name | urlencode }}" class="siege-card {% if siege.isActive %}active{% endif %}">
+        <div class="siege-header">
+            <span class="siege-name">{{ siege.name }}</span>
+            <span class="siege-badge {% if siege.isActive %}badge-active{% else %}badge-inactive{% endif %}">
+                {{ "Active" if siege.isActive else siege.status | capitalize }}
+            </span>
+        </div>
+        <div class="siege-type">{{ siege.type | replace("_", " ") | title }}</div>
+        <div class="siege-matchup">
+            <div class="side attacker">
+                <div class="side-label">Attacker</div>
+                <div class="side-name">{{ siege.attacker }}</div>
+                <div class="side-pts">{{ siege.attackerPoints }} pts</div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="side defender">
+                <div class="side-label">Defender</div>
+                <div class="side-name">{{ siege.defender }}</div>
+                <div class="side-pts">{{ siege.defenderPoints }} pts</div>
+            </div>
+        </div>
+        <div class="siege-footer">
+            <span>Balance: <b>{{ siege.balance }}</b></span>
+            <span>Sessions: {{ siege.sessionsCompleted }}/{{ siege.sessionsCompleted + siege.sessionsLeft }}</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<style>
+.siege-meta {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+}
+.meta-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 9px;
+    padding: 8px 16px;
+}
+.meta-label { font-size: 12px; color: #666; font-weight: 500; }
+.meta-value  { font-size: 14px; color: #e0e0e0; font-weight: 600; }
+
+.sieges-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+}
+
+.siege-card {
+    display: block;
+    background: #181818;
+    border: 1px solid #252525;
+    border-radius: 12px;
+    padding: 18px 20px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.siege-card:hover {
+    border-color: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+.siege-card.active { border-color: #b91c1c44; background: #1c1414; }
+.siege-card.active:hover { border-color: #b91c1c88; }
+
+.siege-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.siege-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f0f0f0;
+}
+.siege-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.badge-active   { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.badge-inactive { background: rgba(100,100,100,0.15); color: #888; border: 1px solid #2a2a2a; }
+
+.siege-type {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 14px;
+}
+
+.siege-matchup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.side {
+    flex: 1;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+.side.attacker { border-color: #7f1d1d44; }
+.side.defender { border-color: #1e3a5f44; }
+.side-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.side-name  { font-size: 13px; font-weight: 600; color: #e0e0e0; margin-bottom: 2px; }
+.side.attacker .side-pts { font-size: 12px; color: #f87171; font-weight: 600; }
+.side.defender .side-pts { font-size: 12px; color: #60a5fa; font-weight: 600; }
+.vs { font-size: 11px; font-weight: 700; color: #444; flex-shrink: 0; }
+
+.siege-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #555;
+}
+.siege-footer b { color: #aaa; }
+
+@media (max-width: 700px) {
+    .sieges-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
