@@ -118,14 +118,18 @@ document.querySelectorAll('th[data-col]').forEach(th => {
 });
 
 async function loadAll() {
-    let offset = 0;
+    const seen = new Set();
+    let offset  = 0;
     while (true) {
         const resp = await fetch(`/kitpvp/data?offset=${offset}`);
         const data = await resp.json();
-        allPlayers.push(...data.items);
+        let added = 0;
+        for (const p of data.items) {
+            if (!seen.has(p.uuid)) { seen.add(p.uuid); allPlayers.push(p); added++; }
+        }
+        offset += data.items.length;
         render();
-        if (!data.hasMore) break;
-        offset += 100;
+        if (!data.hasMore || data.items.length === 0) break;
         status.textContent = `Loaded ${allPlayers.length} players…`;
     }
     status.textContent = `${allPlayers.length} players`;
