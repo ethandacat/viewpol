@@ -36,11 +36,16 @@ const grid = document.getElementById('shop-grid');
 
 async function reset() {
     grid.innerHTML = '';
-    const params = new URLSearchParams({ q: shopQuery, stock_filter: stockFilter, type_filter: typeFilter });
-    const shops  = await fetch('/shops/data?' + params).then(r => r.json());
-    const frag   = document.createDocumentFragment();
-    shops.forEach(n => frag.appendChild(createCard(n)));
-    grid.appendChild(frag);
+    let page = 1;
+    while (true) {
+        const params = new URLSearchParams({ page, q: shopQuery, stock_filter: stockFilter, type_filter: typeFilter });
+        const data   = await fetch('/shops/data?' + params).then(r => r.json());
+        const frag   = document.createDocumentFragment();
+        data.players.forEach(n => frag.appendChild(createCard(n)));
+        grid.appendChild(frag);
+        if (!data.has_more) break;
+        page++;
+    }
 }
 
 function titleCase(str) {
@@ -77,7 +82,7 @@ function createCard(n) {
     card.style.cssText = 'padding:20px;box-sizing:border-box;';
     card.innerHTML = `
         <a href="/shops/${n.id}" style="color:white;line-height:1.2;font-weight:normal;">
-            <img loading="lazy" src="https://api.earthpol.com/textures/item/${itemId}.png"
+            <img loading="lazy" fetchpriority="low" src="https://api.earthpol.com/textures/item/${itemId}.png"
                  style="width:80px;height:auto;max-height:180px;object-fit:contain;image-rendering:pixelated;"
                  onerror="this.style.display='none'">
             <p><b>${displayName}</b></p>

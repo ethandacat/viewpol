@@ -96,9 +96,18 @@ def shops_page():
     return render_template("shops.html", query=query, stock_filter=stock_filter, type_filter=type_filter)
 
 
+SHOPS_PER_PAGE = 40
+
 @app.route("/shops/data")
 def shops_data():
+    page         = max(1, int(request.args.get("page", 1)))
     query        = request.args.get("q", "").lower()
     stock_filter = request.args.get("stock_filter", "hide")
     type_filter  = request.args.get("type_filter",  "both")
-    return jsonify(filter_shops(load_shops(), query, stock_filter, type_filter))
+
+    reqdata = filter_shops(load_shops(), query, stock_filter, type_filter)
+    start   = (page - 1) * SHOPS_PER_PAGE
+    return jsonify({
+        "players":  reqdata[start : start + SHOPS_PER_PAGE],
+        "has_more": start + SHOPS_PER_PAGE < len(reqdata),
+    })
