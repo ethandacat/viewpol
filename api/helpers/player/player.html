@@ -6,8 +6,8 @@
 
 <div class="detail-header">
     <img class="player-head"
-         src="https://api.mineatar.io/head/{{ data.uuid }}?scale=15&overlay=true&format=png"
-         alt="{{ data.name }}'s head">
+         src="https://vzge.me/bust/{{ data.uuid }}"
+         alt="{{ data.name }}'s bust">
     <h1>{{ data.name }}</h1>
     {% if data.title or data.surname %}
     <p class="board-text">{% if data.title %}{{ data.title }} {% endif %}{{ data.name }}{% if data.surname %} {{ data.surname }}{% endif %}</p>
@@ -23,14 +23,6 @@
 </div>
 
 <div class="detail-body">
-    <div class="detail-left">
-        <div class="skin-frame">
-            <img loading="lazy"
-                 src="https://vzge.me/bust/{{ data.uuid }}"
-                 alt="{{ data.name }}'s bust">
-        </div>
-    </div>
-
     <div class="detail-right">
 
         <div class="section">
@@ -83,8 +75,8 @@
     margin-bottom: 28px;
 }
 .player-head {
-    width: 80px;
-    height: auto;
+    height: 140px;
+    width: auto;
     border-radius: 8px;
     margin-bottom: 12px;
     display: block;
@@ -119,21 +111,6 @@
     gap: 20px;
     align-items: flex-start;
 }
-.detail-left {
-    flex: 0 0 160px;
-}
-.skin-frame {
-    background: #181818;
-    border: 1px solid #252525;
-    border-radius: 10px;
-    padding: 16px;
-    text-align: center;
-}
-.skin-frame img {
-    width: 100%;
-    height: auto;
-}
-
 .detail-right {
     flex: 1;
     display: flex;
@@ -240,9 +217,6 @@ a { color: #4da6ff; text-decoration: none; font-size: inherit; }
 a:hover { color: #7dc0ff; }
 
 @media (max-width: 700px) {
-    .detail-body { flex-direction: column; }
-    .detail-left { flex: none; width: 100%; }
-    .skin-frame img { max-width: 120px; }
     .stats-bar { flex-wrap: wrap; justify-content: center; }
 }
 </style>
