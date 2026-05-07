@@ -11,111 +11,39 @@
     </form>
 </div>
 
-<div id="town-grid-container">
-    <div class="grid nationgrid" style="visibility: hidden;">
-        {% for town in players %}
-        <div class="player-card" data-name="{{ town.name }}">
-            <img loading="lazy"
-                 src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
-                 alt="{{ town.name }} flag"
-                 style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
-                 onerror="this.onerror=null;this.src=generateFlagSVG(this.closest('[data-name]').dataset.name);">
-            <a href="/towns/{{ town.uuid }}" style="display: block; text-align: center;">{{ town.name }}</a>
-        </div>
-        {% endfor %}
+<div class="grid nationgrid" style="visibility: hidden;">
+    {% for town in players %}
+    <div class="player-card" data-name="{{ town.name }}">
+        <img loading="lazy"
+             src="https://cdn.earthpol.com/towns/{{ town.name.replace(' ', '_') }}.png"
+             alt="{{ town.name }} flag"
+             style="width: 100%; height: auto; max-height: 180px; object-fit: contain;"
+             onerror="this.onerror=null;this.src=generateFlagSVG(this.closest('[data-name]').dataset.name);">
+        <a href="/towns/{{ town.uuid }}" style="display: block; text-align: center;">{{ town.name }}</a>
     </div>
+    {% endfor %}
 </div>
 
-<div class="pagination" id="pagination-controls"></div>
-
 <script>
-const TOWNS_PER_PAGE = 20;
-let currentPage = {{ page }};
-
 document.addEventListener('DOMContentLoaded', () => {
-    const gridContainer = document.querySelector('.nationgrid');
-    const allCards = Array.from(document.querySelectorAll('.player-card'));
+    const grid = document.querySelector('.nationgrid');
+    const allCards = Array.from(grid.querySelectorAll('.player-card'));
 
-    let towns = allCards
-        .map(card => ({ name: card.dataset.name, element: card }))
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-
-    const totalPages = Math.ceil(towns.length / TOWNS_PER_PAGE);
-
-    function renderPage(page) {
-        const start = (page - 1) * TOWNS_PER_PAGE;
-        const end = start + TOWNS_PER_PAGE;
-        gridContainer.innerHTML = '';
-        towns.slice(start, end).forEach(t => gridContainer.appendChild(t.element));
-        renderPaginationControls(page);
-    }
-
-    function renderPaginationControls(page) {
-        const container = document.getElementById('pagination-controls');
-        container.innerHTML = '';
-        const controls = [];
-
-        const first = document.createElement('a');
-        first.href = '#'; first.textContent = '« First';
-        first.className = page === 1 ? 'disabled' : '';
-        if (page !== 1) first.onclick = e => { e.preventDefault(); goToPage(1); };
-        controls.push(first);
-
-        const prev = document.createElement('a');
-        prev.href = '#'; prev.textContent = '‹ Prev';
-        prev.className = page === 1 ? 'disabled' : '';
-        if (page > 1) prev.onclick = e => { e.preventDefault(); goToPage(page - 1); };
-        controls.push(prev);
-
-        const startNum = Math.max(1, Math.min(totalPages - 2, page - 1));
-        for (let i = 0; i < 3; i++) {
-            const numPage = startNum + i;
-            if (numPage <= totalPages) {
-                const pageLink = document.createElement('a');
-                pageLink.href = '#'; pageLink.textContent = numPage;
-                if (numPage === page) pageLink.className = 'current';
-                pageLink.onclick = e => { e.preventDefault(); goToPage(numPage); };
-                controls.push(pageLink);
-            } else {
-                const filler = document.createElement('span');
-                filler.textContent = '...'; filler.className = 'filler';
-                controls.push(filler);
-            }
-        }
-
-        const next = document.createElement('a');
-        next.href = '#'; next.textContent = 'Next ›';
-        next.className = page === totalPages ? 'disabled' : '';
-        if (page < totalPages) next.onclick = e => { e.preventDefault(); goToPage(page + 1); };
-        controls.push(next);
-
-        const last = document.createElement('a');
-        last.href = '#'; last.textContent = 'Last »';
-        last.className = page === totalPages ? 'disabled' : '';
-        if (page !== totalPages) last.onclick = e => { e.preventDefault(); goToPage(totalPages); };
-        controls.push(last);
-
-        controls.forEach(c => container.appendChild(c));
-    }
-
-    function goToPage(page) {
-        currentPage = page;
-        renderPage(currentPage);
+    function render(cards) {
+        grid.innerHTML = '';
+        cards
+            .sort((a, b) => a.dataset.name.toLowerCase().localeCompare(b.dataset.name.toLowerCase()))
+            .forEach(c => grid.appendChild(c));
     }
 
     document.getElementById('search-form').addEventListener('submit', e => {
         e.preventDefault();
-        const query = document.getElementById('search-input').value.toLowerCase();
-        towns = allCards
-            .filter(card => card.dataset.name.toLowerCase().includes(query))
-            .map(card => ({ name: card.dataset.name, element: card }))
-            .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-        currentPage = 1;
-        renderPage(currentPage);
+        const q = document.getElementById('search-input').value.toLowerCase();
+        render(allCards.filter(c => c.dataset.name.toLowerCase().includes(q)));
     });
 
-    renderPage(currentPage);
-    gridContainer.style.visibility = 'visible';
+    render(allCards);
+    grid.style.visibility = 'visible';
 });
 </script>
 
