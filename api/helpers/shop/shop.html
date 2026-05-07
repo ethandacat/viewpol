@@ -19,14 +19,14 @@
     "white":        "#FFFFFF"
 } %}
 
-{% if data.item.meta and data.item.meta['display-name'] and data.item.meta['display-name'].extra and data.item.meta['display-name'].extra|length > 0 %}
-    {% set display_name = data.item.meta['display-name'].extra[0].text %}
+{% if data.item.meta and data.item.meta['display-name'] and data.item.meta['display-name'] is mapping and data.item.meta['display-name'].extra and data.item.meta['display-name'].extra|length > 0 %}
+    {% set display_name = data.item.meta['display-name'].extra[0].text | title %}
     {% set name_color   = '#FF55FF' %}
 {% elif data.item.meta and (data.item.meta.enchants or data.item.meta['stored-enchants']) %}
-    {% set display_name = data.item.item.replace('_', ' ')|title %}
+    {% set display_name = data.item.item.replace('_', ' ') | title %}
     {% set name_color   = '#55FFFF' %}
 {% else %}
-    {% set display_name = data.item.item.replace('_', ' ')|title %}
+    {% set display_name = data.item.item.replace('_', ' ') | title %}
     {% set name_color   = '#FFFFFF' %}
 {% endif %}
 
@@ -177,10 +177,10 @@
     top: 0;
     left: 0;
     background-color: rgba(16, 0, 16, 0.94);
-    padding: 0.375em;
+    padding: 0.5em 0.75em;
     font-family: 'Minecraftia', sans-serif;
     font-size: 16px;
-    word-spacing: 4px;
+    word-spacing: 1px;
     white-space: nowrap;
     line-height: 1.25em;
     margin: 0.125em 0.25em;
