@@ -46,7 +46,7 @@
     <div style="display:none">
         <div id="minetip-data-title"><span class="minetip-title" style="color:{{ name_color }};">{{ display_name }}</span></div>
         {% if all_enchants %}
-        <div id="minetip-data-enchants">{% for ench, lvl in all_enchants.items() %}<span class="minetip-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</span>{% endfor %}</div>
+        <div id="minetip-data-enchants"><span class="minetip-spacer-sm"></span>{% for ench, lvl in all_enchants.items() %}<span class="minetip-enchant">{{ ench.replace('minecraft:','').replace('_',' ')|title }} {{ lvl }}</span>{% endfor %}</div>
         {% endif %}
         {% if data.item.meta and data.item.meta.lore %}
         <div id="minetip-data-lore"><span class="minetip-spacer"></span>{% for line in data.item.meta.lore %}<span class="minetip-lore">{% if line.extra %}{% for part in line.extra %}<span style="color:{{ MINECRAFT_COLORS.get(part.color, '#AAAAAA') }};{% if part.bold %}font-weight:700;{% endif %}{% if part.italic %}font-style:italic;{% endif %}">{{ part.text }}</span>{% endfor %}{% else %}<span style="color:#AAAAAA;">{{ line.text }}</span>{% endif %}</span>{% endfor %}</div>
@@ -166,12 +166,12 @@
     top: 0;
     left: 0;
     background-color: rgba(16, 0, 16, 0.94);
-    padding: 0.5em 0.75em;
+    padding: 0.65em 1em;
     font-family: 'Minecraftia', sans-serif;
-    font-size: 16px;
+    font-size: 20px;
     word-spacing: 1px;
     white-space: nowrap;
-    line-height: 1.25em;
+    line-height: 1.35em;
     margin: 0.125em 0.25em;
     pointer-events: none;
     z-index: 9999;
@@ -202,7 +202,8 @@
 #minetip-tooltip .minetip-title    { display: block; }
 #minetip-tooltip .minetip-enchant  { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; }
 #minetip-tooltip .minetip-lore     { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; font-style: italic; }
-#minetip-tooltip .minetip-spacer   { display: block; height: 0.4em; }
+#minetip-tooltip .minetip-spacer    { display: block; height: 0.4em; }
+#minetip-tooltip .minetip-spacer-sm { display: block; height: 0.2em; }
 .mc-text { font-family:'Minecraftia',sans-serif; font-size:12px; line-height:1.5; margin:0 0 4px; }
 
 .stats-bar {
