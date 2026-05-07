@@ -92,7 +92,7 @@
                     {% if p.natural_death %}
                     <b>{{ p.victim }}</b> <span class="ev-side side-{{ p.victim_side | lower }}">{{ p.victim_side }}</span> died
                     {% else %}
-                    <b>{{ p.killer }}</b> <span class="ev-side side-{{ p.killer_side | lower }}">{{ p.killer_side }}</span> killed <b>{{ p.victim }}</b>
+                    <b>{{ p.killer }}</b> killed <b>{{ p.victim }}</b>
                     {% endif %}
                     at <span class="ev-time" data-ms="{{ ev.timestamp }}"></span>
                     netting <span class="ev-side side-{{ p.netting_side | lower }}">{{ p.netting_side }}</span> <b>{{ p.points }}</b> points.
