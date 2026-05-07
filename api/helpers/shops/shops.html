@@ -26,41 +26,21 @@
 </div>
 
 <div class="grid shopgrid" id="shop-grid"></div>
-<div id="sentinel" style="height:1px;margin-bottom:40px;"></div>
 
 <script>
-let shopPage     = 0;
-let shopLoading  = false;
-let shopHasMore  = true;
-let shopQuery    = {{ query|tojson }};
-let stockFilter  = {{ stock_filter|tojson }};
-let typeFilter   = {{ type_filter|tojson }};
+let shopQuery   = {{ query|tojson }};
+let stockFilter = {{ stock_filter|tojson }};
+let typeFilter  = {{ type_filter|tojson }};
 
-const grid     = document.getElementById('shop-grid');
-const sentinel = document.getElementById('sentinel');
+const grid = document.getElementById('shop-grid');
 
-const observer = new IntersectionObserver(
-    e => { if (e[0].isIntersecting) loadMore(); },
-    { rootMargin: '400px' }
-);
-observer.observe(sentinel);
-
-async function loadMore() {
-    if (shopLoading || !shopHasMore) return;
-    shopLoading = true;
-    shopPage++;
-    const params = new URLSearchParams({ page: shopPage, q: shopQuery, stock_filter: stockFilter, type_filter: typeFilter });
-    const data   = await fetch('/shops/data?' + params).then(r => r.json());
-    data.players.forEach(n => grid.appendChild(createCard(n)));
-    shopHasMore = data.has_more;
-    shopLoading = false;
-}
-
-function reset() {
-    shopPage    = 0;
-    shopHasMore = true;
+async function reset() {
     grid.innerHTML = '';
-    loadMore();
+    const params = new URLSearchParams({ q: shopQuery, stock_filter: stockFilter, type_filter: typeFilter });
+    const shops  = await fetch('/shops/data?' + params).then(r => r.json());
+    const frag   = document.createDocumentFragment();
+    shops.forEach(n => frag.appendChild(createCard(n)));
+    grid.appendChild(frag);
 }
 
 function titleCase(str) {
