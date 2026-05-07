@@ -14,7 +14,7 @@
 <div id="card-pool" style="display:none;">
     {% for n in players %}
     <div class="player-card" data-name="{{ n.name }}">
-        <img loading="lazy"
+        <img fetchpriority="high"
              src="https://cdn.earthpol.com/nations/{{ n.name.replace(' ', '_') }}.png"
              alt="{{ n.name }} flag"
              style="width:100%;height:auto;max-height:180px;object-fit:contain;"
@@ -38,7 +38,16 @@
         const next = pool.slice(shown, shown + BATCH);
         if (!next.length) return;
         const frag = document.createDocumentFragment();
-        next.forEach(c => frag.appendChild(c));
+        next.forEach(c => {
+            // Pre-fill placeholder so it shows before the real image even attempts
+            const img = c.querySelector('img');
+            if (img && !img.dataset.prefilled) {
+                img.dataset.prefilled = '1';
+                const name = c.dataset.name;
+                img.style.cssText += ';background:' + `url("${generateFlagSVG(name)}") center/contain no-repeat`;
+            }
+            frag.appendChild(c);
+        });
         grid.appendChild(frag);
         shown += next.length;
     }
