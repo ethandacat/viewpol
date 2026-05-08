@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, redirect
-import json, math, secrets, time
+import json, math, secrets, time, os
 import requests as reqs
 import vercel_blob as vb
 from ..shops.shops import load_shops
@@ -10,7 +10,10 @@ app = Blueprint("shop_groups", __name__, template_folder="")
 _http = reqs.Session()
 _http.headers.update({"User-Agent": "earthpol-web/1.0", "Accept": "application/json"})
 
-BLOB_KEY = "shop_groups.json"
+# Use a separate blob key per Vercel environment so production and preview
+# (rework branch) never share mall data.
+_ENV = os.environ.get("VERCEL_ENV", "development")   # "production" | "preview" | "development"
+BLOB_KEY = "shop_groups.json" if _ENV == "production" else f"shop_groups_{_ENV}.json"
 
 
 # ── Blob helpers ───────────────────────────────────────────────────
