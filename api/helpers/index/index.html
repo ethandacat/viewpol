@@ -346,23 +346,24 @@
 (function () {
     let _history = [];
     let _windowMs = 86400000; // default 24h
+    let _lastTs   = 0;
 
-    // ── Fetch live status ──────────────────────────────────────────
-    fetch('/api/server-status/current')
-        .then(r => r.json())
-        .then(d => {
-            const dot = document.getElementById('t-dot');
-            dot.className = 'tracker-dot ' + (d.online ? 'online' : 'offline');
-            document.getElementById('t-count').textContent = d.online ? d.players : '—';
-            document.getElementById('t-max').textContent   = d.online ? d.max    : '—';
-        })
-        .catch(() => {});
+    function updateHeader(d) {
+        const dot = document.getElementById('t-dot');
+        dot.className = 'tracker-dot ' + (d.online ? 'online' : 'offline');
+        document.getElementById('t-count').textContent = d.online ? d.players : '—';
+        document.getElementById('t-max').textContent   = d.online ? d.max    : '—';
+    }
 
-    // ── Fetch history ──────────────────────────────────────────────
+    // ── Initial load ───────────────────────────────────────────────
     fetch('/api/server-status/history')
         .then(r => r.json())
         .then(data => {
             _history = data;
+            if (_history.length) {
+                _lastTs = _history[_history.length - 1].ts;
+                updateHeader(_history[_history.length - 1]);
+            }
             renderChart();
             renderStats();
         })
@@ -370,6 +371,22 @@
             document.getElementById('t-chart').innerHTML =
                 '<div class="tracker-empty">Could not load history</div>';
         });
+
+    // ── Live poll every 10s ────────────────────────────────────────
+    setInterval(() => {
+        fetch('/api/server-status/current')
+            .then(r => r.json())
+            .then(d => {
+                updateHeader(d);
+                if (d.ts && d.ts > _lastTs) {
+                    _lastTs = d.ts;
+                    _history.push(d);
+                    renderChart();
+                    renderStats();
+                }
+            })
+            .catch(() => {});
+    }, 10000);
 
     // ── Window toggle ──────────────────────────────────────────────
     window.setWindow = function (btn, ms) {
