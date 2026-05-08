@@ -42,12 +42,18 @@
         <div class="siege-matchup">
             <div class="side attacker">
                 <div class="side-label">Attacker</div>
+                <img class="side-flag" src="https://cdn.earthpol.com/nations/{{ siege.attacker | replace(' ', '_') }}.png"
+                     onerror="this.src='https://cdn.earthpol.com/towns/{{ siege.attacker | replace(' ', '_') }}.png';this.onerror=function(){this.style.display='none'};"
+                     alt="">
                 <div class="side-name">{{ siege.attacker }}</div>
                 <div class="side-pts">{{ siege.attackerPoints }} pts</div>
             </div>
             <div class="vs">VS</div>
             <div class="side defender">
                 <div class="side-label">Defender</div>
+                <img class="side-flag" src="https://cdn.earthpol.com/nations/{{ siege.defender | replace(' ', '_') }}.png"
+                     onerror="this.src='https://cdn.earthpol.com/towns/{{ siege.defender | replace(' ', '_') }}.png';this.onerror=function(){this.style.display='none'};"
+                     alt="">
                 <div class="side-name">{{ siege.defender }}</div>
                 <div class="side-pts">{{ siege.defenderPoints }} pts</div>
             </div>
@@ -149,7 +155,8 @@
 }
 .side.attacker { border-color: #7f1d1d44; }
 .side.defender { border-color: #1e3a5f44; }
-.side-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.side-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.side-flag  { width: 100%; max-height: 56px; object-fit: contain; image-rendering: pixelated; margin-bottom: 6px; display: block; }
 .side-name  { font-size: 13px; font-weight: 600; color: #e0e0e0; margin-bottom: 2px; }
 .side.attacker .side-pts { font-size: 12px; color: #f87171; font-weight: 600; }
 .side.defender .side-pts { font-size: 12px; color: #60a5fa; font-weight: 600; }
