@@ -31,7 +31,7 @@
 {% else %}
 <div class="sieges-grid">
     {% for siege in sieges %}
-    <a href="/sieges/{{ siege.name | urlencode }}" class="siege-card {% if siege.isActive %}active{% endif %}">
+    <a href="/sieges/{{ siege.uuid }}" class="siege-card {% if siege.isActive %}active{% endif %}">
         <div class="siege-header">
             <span class="siege-name">{{ siege.name }}</span>
             <span class="siege-badge {% if siege.isActive %}badge-active{% else %}badge-inactive{% endif %}">

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect
 import requests as reqs
 
 app = Blueprint("sieges", __name__, template_folder="")
@@ -144,16 +144,17 @@ def _build_chart_data(siege):
     return chart
 
 
-@app.route("/sieges/<name>")
-def siege_page(name):
+@app.route("/sieges/<identifier>")
+def siege_page(identifier):
     data = load_sieges()
     sieges = data.get("sieges", [])
-    siege = next(
-        (s for s in sieges if s.get("name", "").lower() == name.lower() or s.get("uuid", "") == name),
-        None,
-    )
+    # Try UUID match first, then name match
+    siege = next((s for s in sieges if s.get("uuid", "") == identifier), None)
     if siege is None:
-        return "", 404
+        siege = next((s for s in sieges if s.get("name", "").lower() == identifier.lower()), None)
+        if siege is None:
+            return "", 404
+        return redirect(f"/sieges/{siege['uuid']}", 301)
     siege = _fill_points(siege)
     battle_sessions = _process_sessions(siege.get("battleSessions") or [])
     chart_data      = _build_chart_data(siege)

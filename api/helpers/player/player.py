@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect
 import requests as reqs
 from ..helpers import itemstack
 
@@ -23,12 +23,16 @@ def _normalize_shop_type(n):
     return "UNKNOWN"
 
 
-@app.route("/players/<uuid>")
-def player(uuid):
-    req = requests.post("https://api.earthpol.com/astra/players", json={"query": [uuid]})
+@app.route("/players/<identifier>")
+def player(identifier):
+    req = requests.post("https://api.earthpol.com/astra/players", json={"query": [identifier]})
     if req.status_code != 200 or len(req.json()) == 0:
         return "", 404
+    data_uuid = req.json()[0].get("uuid", "")
+    if data_uuid and data_uuid != identifier:
+        return redirect(f"/players/{data_uuid}", 301)
 
+    uuid = data_uuid
     sreq = requests.post("https://api.earthpol.com/astra/shops", json={"query": [uuid]})
     shops_raw = sreq.json() if sreq.status_code == 200 else []
     # API may return [[...]] when queried by UUID
