@@ -240,6 +240,25 @@
     }
     .tracker-powered a { color: #404040 !important; font-size: 11px; }
     .tracker-powered a:hover { color: #666 !important; }
+
+    .chart-tooltip {
+        position: absolute;
+        background: #1c1c1c;
+        border: 1px solid #333;
+        border-radius: 7px;
+        padding: 7px 11px;
+        font-size: 12.5px;
+        color: #e0e0e0;
+        pointer-events: none;
+        z-index: 10;
+        white-space: nowrap;
+        line-height: 1.6;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+    }
+    .ct-dot { font-size: 9px; }
+    .ct-dot.online  { color: #22c55e; }
+    .ct-dot.offline { color: #ef4444; }
+    .ct-time { color: #555; font-size: 11px; }
 </style>
 
 <div class="hero">
@@ -361,6 +380,8 @@
     };
 
     // ── Sparkline SVG ─────────────────────────────────────────────
+    let _activePts = [], _cx, _cy;
+
     function renderChart() {
         const wrap = document.getElementById('t-chart');
         const now  = Date.now();
@@ -378,19 +399,19 @@
         const tMin   = pts[0].ts;
         const tRange = pts[pts.length - 1].ts - tMin || 1;
 
-        const cx = e => (e.ts - tMin) / tRange * W;
-        const cy = e => H - 6 - (e.players / maxP) * (H - 14);
+        _activePts = pts;
+        _cx = e => (e.ts - tMin) / tRange * W;
+        _cy = e => H - 6 - (e.players / maxP) * (H - 14);
 
-        const lineCoords = pts.map(e => `${cx(e).toFixed(1)},${cy(e).toFixed(1)}`).join(' ');
+        const lineCoords = pts.map(e => `${_cx(e).toFixed(1)},${_cy(e).toFixed(1)}`).join(' ');
         const areaCoords =
-            `${cx(pts[0]).toFixed(1)},${H} ` + lineCoords +
-            ` ${cx(pts[pts.length-1]).toFixed(1)},${H}`;
+            `${_cx(pts[0]).toFixed(1)},${H} ` + lineCoords +
+            ` ${_cx(pts[pts.length-1]).toFixed(1)},${H}`;
 
-        // Red bands for offline spans
         let offlineBands = '';
         for (let i = 0; i < pts.length - 1; i++) {
             if (!pts[i].online) {
-                const x1 = cx(pts[i]), x2 = cx(pts[i + 1]);
+                const x1 = _cx(pts[i]), x2 = _cx(pts[i + 1]);
                 offlineBands += `<rect x="${x1.toFixed(1)}" y="0" width="${(x2-x1).toFixed(1)}" height="${H}" fill="rgba(239,68,68,0.10)"/>`;
             }
         }
@@ -398,7 +419,7 @@
         const maxLabel = maxP >= 1000 ? (maxP/1000).toFixed(1)+'k' : maxP;
 
         wrap.innerHTML = `
-<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="cursor:crosshair">
   <defs>
     <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"   stop-color="#3b82f6" stop-opacity="0.22"/>
@@ -409,9 +430,74 @@
   <polygon points="${areaCoords}" fill="url(#tg)"/>
   <polyline points="${lineCoords}" fill="none" stroke="#3b82f6" stroke-width="2.2"
             stroke-linejoin="round" stroke-linecap="round"/>
+  <line id="t-crosshair" x1="0" y1="0" x2="0" y2="${H}" stroke="#555" stroke-width="1"
+        stroke-dasharray="3,3" display="none"/>
+  <circle id="t-dot-hover" r="4" fill="#3b82f6" stroke="#1d4ed8" stroke-width="1.5" display="none"/>
+  <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
   <text x="4" y="10" font-size="9" fill="#444" font-family="Inter,sans-serif">${maxLabel}</text>
   <text x="4" y="${H-2}" font-size="9" fill="#444" font-family="Inter,sans-serif">0</text>
-</svg>`;
+</svg>
+<div class="chart-tooltip" id="t-tooltip" style="display:none"></div>`;
+
+        attachChartEvents(wrap, H);
+    }
+
+    function attachChartEvents(wrap, H) {
+        const svg      = wrap.querySelector('svg');
+        const crosshair = wrap.querySelector('#t-crosshair');
+        const dotHover  = wrap.querySelector('#t-dot-hover');
+        const tooltip   = wrap.querySelector('#t-tooltip');
+
+        function svgX(e) {
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX; pt.y = e.clientY;
+            return pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+        }
+
+        function nearest(x) {
+            let best = _activePts[0], bestDist = Infinity;
+            for (const p of _activePts) {
+                const d = Math.abs(_cx(p) - x);
+                if (d < bestDist) { bestDist = d; best = p; }
+            }
+            return best;
+        }
+
+        svg.addEventListener('mousemove', e => {
+            const x = svgX(e);
+            const p = nearest(x);
+            const px = _cx(p), py = _cy(p);
+
+            crosshair.setAttribute('x1', px); crosshair.setAttribute('x2', px);
+            crosshair.removeAttribute('display');
+            dotHover.setAttribute('cx', px); dotHover.setAttribute('cy', py);
+            dotHover.setAttribute('fill', p.online ? '#3b82f6' : '#ef4444');
+            dotHover.removeAttribute('display');
+
+            const time = new Date(p.ts).toLocaleString('en-US',
+                {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+            tooltip.innerHTML = p.online
+                ? `<span class="ct-dot online">●</span> <strong>${p.players}</strong> players<br><span class="ct-time">${time}</span>`
+                : `<span class="ct-dot offline">●</span> <strong>Offline</strong><br><span class="ct-time">${time}</span>`;
+            tooltip.style.display = 'block';
+
+            // Convert SVG dot position → screen → wrap-relative
+            const dotPt = svg.createSVGPoint();
+            dotPt.x = px; dotPt.y = py;
+            const screen = dotPt.matrixTransform(svg.getScreenCTM());
+            const rect   = wrap.getBoundingClientRect();
+            let left = screen.x - rect.left - tooltip.offsetWidth / 2;
+            let top  = screen.y - rect.top  - tooltip.offsetHeight - 10;
+            left = Math.max(4, Math.min(left, wrap.offsetWidth - tooltip.offsetWidth - 4));
+            tooltip.style.left = left + 'px';
+            tooltip.style.top  = top  + 'px';
+        });
+
+        svg.addEventListener('mouseleave', () => {
+            crosshair.setAttribute('display', 'none');
+            dotHover.setAttribute('display',  'none');
+            tooltip.style.display = 'none';
+        });
     }
 
     // ── Stats ──────────────────────────────────────────────────────
