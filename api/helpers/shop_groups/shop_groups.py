@@ -307,21 +307,23 @@ def sg_user_shops():
 
 
 def _compute_market_stats(item_ids):
-    """Return {item_id: {count, avg, min}} for SELLING shops across all shops."""
+    """Return {item_key: {count, avg, min}} for SELLING shops across all shops.
+    item_key includes base type + display name + enchants so differently-enchanted
+    items are never averaged together."""
     buckets = {}
     for s in load_shops():
-        item_id = (s.get("item") or {}).get("item", "")
-        if item_id not in item_ids or s.get("type") != "SELLING":
+        key = itemstack.item_key(s.get("item") or {})
+        if not key or key not in item_ids or s.get("type") != "SELLING":
             continue
         unit = s.get("unit_price")
         if unit is None or not math.isfinite(unit) or unit <= 0:
             continue
-        if item_id not in buckets:
-            buckets[item_id] = {"count": 0, "total": 0.0, "min": float("inf")}
-        buckets[item_id]["count"] += 1
-        buckets[item_id]["total"] += unit
-        if unit < buckets[item_id]["min"]:
-            buckets[item_id]["min"] = unit
+        if key not in buckets:
+            buckets[key] = {"count": 0, "total": 0.0, "min": float("inf")}
+        buckets[key]["count"] += 1
+        buckets[key]["total"] += unit
+        if unit < buckets[key]["min"]:
+            buckets[key]["min"] = unit
     result = {}
     for k, v in buckets.items():
         result[k] = {
@@ -351,15 +353,15 @@ def sg_rankings():
     shops_list = load_shops()
     shops_by_id = {str(s.get("id", "")): s for s in shops_list}
 
-    # Gather all selling item IDs across every mall — one market pass for all
+    # Gather all selling item keys across every mall — one market pass for all
     all_item_ids = set()
     for g in groups:
         for sid in g.get("shopIds", []):
             s = shops_by_id.get(str(sid))
             if s and s.get("type") == "SELLING":
-                item_id = (s.get("item") or {}).get("item", "")
-                if item_id:
-                    all_item_ids.add(item_id)
+                key = itemstack.item_key(s.get("item") or {})
+                if key:
+                    all_item_ids.add(key)
 
     mkt = _compute_market_stats(all_item_ids) if all_item_ids else {}
 
@@ -368,17 +370,17 @@ def sg_rankings():
         mall_shops = [shops_by_id[str(sid)] for sid in g.get("shopIds", []) if str(sid) in shops_by_id]
         selling    = [s for s in mall_shops if s.get("type") == "SELLING"]
 
-        # Best price per item in this mall
+        # Best price per item variant in this mall
         item_best = {}
         for s in selling:
-            item_id = (s.get("item") or {}).get("item", "")
-            if not item_id:
+            key = itemstack.item_key(s.get("item") or {})
+            if not key:
                 continue
             up = s.get("unit_price")
             if up is None or not math.isfinite(up) or up <= 0:
                 continue
-            if item_id not in item_best or up < item_best[item_id]:
-                item_best[item_id] = up
+            if key not in item_best or up < item_best[key]:
+                item_best[key] = up
 
         item_count = len(item_best)
         shop_count = len(mall_shops)
