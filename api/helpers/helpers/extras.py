@@ -1,5 +1,6 @@
 from flask import Blueprint
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 app = Blueprint("extras", __name__, template_folder="")
 
