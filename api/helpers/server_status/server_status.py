@@ -73,10 +73,22 @@ def _poll_loop():
         time.sleep(POLL_INTERVAL)
 
 
-# Load history from disk and start polling thread on import
+# Load history from disk at import time
 _history.extend(_load_from_disk())
-_thread = threading.Thread(target=_poll_loop, daemon=True)
-_thread.start()
+
+# Start polling thread lazily on first request so it runs inside the
+# gunicorn worker process (threads don't survive gunicorn's fork).
+_poll_started = False
+_start_lock   = threading.Lock()
+
+@app.before_request
+def _ensure_poll_thread():
+    global _poll_started
+    if not _poll_started:
+        with _start_lock:
+            if not _poll_started:
+                threading.Thread(target=_poll_loop, daemon=True).start()
+                _poll_started = True
 
 
 # ── Routes ─────────────────────────────────────────────────────────
