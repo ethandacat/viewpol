@@ -105,11 +105,189 @@
         color: #2563eb;
         font-weight: 700;
     }
+
+    /* ── Activity Tracker ── */
+    .tracker {
+        max-width: 760px;
+        margin: 0 auto 52px;
+        background: #141414;
+        border: 1px solid #252525;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .tracker-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px 14px;
+        border-bottom: 1px solid #1e1e1e;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .tracker-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .tracker-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #444;
+        flex-shrink: 0;
+        transition: background 0.3s;
+    }
+    .tracker-dot.online  { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); animation: pulse-green 2s infinite; }
+    .tracker-dot.offline { background: #ef4444; }
+    @keyframes pulse-green {
+        0%, 100% { box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+        50%       { box-shadow: 0 0 0 6px rgba(34,197,94,0.08); }
+    }
+    .tracker-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #f0f0f0;
+    }
+    .tracker-ip {
+        font-size: 12px;
+        color: #555;
+        font-family: monospace;
+        background: #1a1a1a;
+        border: 1px solid #262626;
+        padding: 3px 8px;
+        border-radius: 5px;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        transition: color 0.15s, border-color 0.15s;
+        user-select: all;
+    }
+    .tracker-ip:hover { color: #aaa; border-color: #333; }
+    .tracker-players {
+        font-size: 13.5px;
+        color: #888;
+        margin-left: auto;
+    }
+    .tracker-players strong { color: #e0e0e0; font-size: 20px; font-weight: 700; }
+    .tracker-players .sep { color: #444; margin: 0 2px; }
+
+    .tracker-chart-wrap {
+        padding: 14px 20px 0;
+    }
+    .tracker-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 10px;
+    }
+    .tracker-tab {
+        font-size: 12px;
+        font-weight: 600;
+        color: #555;
+        padding: 4px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s;
+        background: none;
+    }
+    .tracker-tab:hover { color: #aaa; background: #1c1c1c; }
+    .tracker-tab.active { color: #e0e0e0; background: #1e1e1e; border-color: #303030; }
+    .tracker-svg-wrap {
+        position: relative;
+        width: 100%;
+        height: 90px;
+    }
+    .tracker-svg-wrap svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+    }
+    .tracker-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 90px;
+        color: #444;
+        font-size: 13px;
+    }
+
+    .tracker-footer {
+        display: flex;
+        gap: 24px;
+        padding: 12px 20px 16px;
+        flex-wrap: wrap;
+    }
+    .tracker-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .tracker-stat-val {
+        font-size: 17px;
+        font-weight: 700;
+        color: #e8e8e8;
+    }
+    .tracker-stat-lbl {
+        font-size: 11.5px;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+    }
+    .tracker-powered {
+        margin-left: auto;
+        font-size: 11px;
+        color: #383838;
+        align-self: flex-end;
+    }
+    .tracker-powered a { color: #404040 !important; font-size: 11px; }
+    .tracker-powered a:hover { color: #666 !important; }
 </style>
 
 <div class="hero">
     <h1>ViewPol</h1>
     <p>Explore the political landscape of EarthPol — nations, towns, players, and shops all in one place.</p>
+</div>
+
+<div class="tracker" id="tracker">
+    <div class="tracker-header">
+        <div class="tracker-brand">
+            <div class="tracker-dot" id="t-dot"></div>
+            <span class="tracker-name">EarthPol</span>
+        </div>
+        <span class="tracker-ip" title="Click to copy" onclick="navigator.clipboard.writeText('play.earthpol.com')">play.earthpol.com</span>
+        <div class="tracker-players">
+            <strong id="t-count">—</strong>
+            <span class="sep">/</span>
+            <span id="t-max">—</span>
+            <span style="color:#555;font-size:12px;margin-left:4px">players</span>
+        </div>
+    </div>
+
+    <div class="tracker-chart-wrap">
+        <div class="tracker-tabs">
+            <button class="tracker-tab active" onclick="setWindow(this,86400000)">24h</button>
+            <button class="tracker-tab" onclick="setWindow(this,259200000)">3d</button>
+            <button class="tracker-tab" onclick="setWindow(this,604800000)">7d</button>
+        </div>
+        <div class="tracker-svg-wrap" id="t-chart">
+            <div class="tracker-empty">Loading history…</div>
+        </div>
+    </div>
+
+    <div class="tracker-footer">
+        <div class="tracker-stat">
+            <span class="tracker-stat-val" id="t-uptime">—</span>
+            <span class="tracker-stat-lbl">Uptime (7d)</span>
+        </div>
+        <div class="tracker-stat">
+            <span class="tracker-stat-val" id="t-avg">—</span>
+            <span class="tracker-stat-lbl">Avg players (7d)</span>
+        </div>
+        <div class="tracker-stat">
+            <span class="tracker-stat-val" id="t-peak">—</span>
+            <span class="tracker-stat-lbl">Peak (7d)</span>
+        </div>
+        <span class="tracker-powered">powered by <a href="https://mcsrvstat.us" target="_blank" rel="noopener">mcsrvstat.us</a></span>
+    </div>
 </div>
 
 <div class="cards-grid">
@@ -144,4 +322,114 @@
         <li>Click any item for detailed nation, town, or player information</li>
     </ul>
 </div>
+
+<script>
+(function () {
+    let _history = [];
+    let _windowMs = 86400000; // default 24h
+
+    // ── Fetch live status ──────────────────────────────────────────
+    fetch('/api/server-status/current')
+        .then(r => r.json())
+        .then(d => {
+            const dot = document.getElementById('t-dot');
+            dot.className = 'tracker-dot ' + (d.online ? 'online' : 'offline');
+            document.getElementById('t-count').textContent = d.online ? d.players : '—';
+            document.getElementById('t-max').textContent   = d.online ? d.max    : '—';
+        })
+        .catch(() => {});
+
+    // ── Fetch history ──────────────────────────────────────────────
+    fetch('/api/server-status/history')
+        .then(r => r.json())
+        .then(data => {
+            _history = data;
+            renderChart();
+            renderStats();
+        })
+        .catch(() => {
+            document.getElementById('t-chart').innerHTML =
+                '<div class="tracker-empty">Could not load history</div>';
+        });
+
+    // ── Window toggle ──────────────────────────────────────────────
+    window.setWindow = function (btn, ms) {
+        document.querySelectorAll('.tracker-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _windowMs = ms;
+        renderChart();
+    };
+
+    // ── Sparkline SVG ─────────────────────────────────────────────
+    function renderChart() {
+        const wrap = document.getElementById('t-chart');
+        const now  = Date.now();
+        const pts  = _history.filter(e => e.ts > now - _windowMs);
+
+        if (pts.length < 2) {
+            wrap.innerHTML = '<div class="tracker-empty">' +
+                (pts.length === 0 ? 'No data yet — check back soon' : 'Not enough data yet') +
+                '</div>';
+            return;
+        }
+
+        const W = 1000, H = 90;
+        const maxP   = Math.max(...pts.map(e => e.players), 1);
+        const tMin   = pts[0].ts;
+        const tRange = pts[pts.length - 1].ts - tMin || 1;
+
+        const cx = e => (e.ts - tMin) / tRange * W;
+        const cy = e => H - 6 - (e.players / maxP) * (H - 14);
+
+        const lineCoords = pts.map(e => `${cx(e).toFixed(1)},${cy(e).toFixed(1)}`).join(' ');
+        const areaCoords =
+            `${cx(pts[0]).toFixed(1)},${H} ` + lineCoords +
+            ` ${cx(pts[pts.length-1]).toFixed(1)},${H}`;
+
+        // Red bands for offline spans
+        let offlineBands = '';
+        for (let i = 0; i < pts.length - 1; i++) {
+            if (!pts[i].online) {
+                const x1 = cx(pts[i]), x2 = cx(pts[i + 1]);
+                offlineBands += `<rect x="${x1.toFixed(1)}" y="0" width="${(x2-x1).toFixed(1)}" height="${H}" fill="rgba(239,68,68,0.10)"/>`;
+            }
+        }
+
+        const maxLabel = maxP >= 1000 ? (maxP/1000).toFixed(1)+'k' : maxP;
+
+        wrap.innerHTML = `
+<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#3b82f6" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  ${offlineBands}
+  <polygon points="${areaCoords}" fill="url(#tg)"/>
+  <polyline points="${lineCoords}" fill="none" stroke="#3b82f6" stroke-width="2.2"
+            stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="4" y="10" font-size="9" fill="#444" font-family="Inter,sans-serif">${maxLabel}</text>
+  <text x="4" y="${H-2}" font-size="9" fill="#444" font-family="Inter,sans-serif">0</text>
+</svg>`;
+    }
+
+    // ── Stats ──────────────────────────────────────────────────────
+    function renderStats() {
+        const now  = Date.now();
+        const week = _history.filter(e => e.ts > now - 604800000);
+        if (!week.length) return;
+
+        const uptime   = (week.filter(e => e.online).length / week.length * 100).toFixed(1);
+        const onlinePts = week.filter(e => e.online && e.players > 0);
+        const avg  = onlinePts.length
+            ? Math.round(onlinePts.reduce((s,e) => s + e.players, 0) / onlinePts.length) : 0;
+        const peak = onlinePts.length ? Math.max(...onlinePts.map(e => e.players)) : 0;
+
+        document.getElementById('t-uptime').textContent = uptime + '%';
+        document.getElementById('t-avg').textContent    = avg  || '—';
+        document.getElementById('t-peak').textContent   = peak || '—';
+    }
+})();
+</script>
 {% endblock %}

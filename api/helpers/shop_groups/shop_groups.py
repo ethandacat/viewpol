@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, redirect
 import json, math, secrets, time, os
 import requests as reqs
-import vercel_blob as vb
+from pathlib import Path
 from ..shops.shops import load_shops
 from ..helpers import itemstack
 
@@ -10,56 +10,24 @@ app = Blueprint("shop_groups", __name__, template_folder="")
 _http = reqs.Session()
 _http.headers.update({"User-Agent": "earthpol-web/1.0", "Accept": "application/json"})
 
-# Use a separate blob key per Vercel environment so production and preview
-# (rework branch) never share mall data.
-_ENV = os.environ.get("VERCEL_ENV", "development")   # "production" | "preview" | "development"
-BLOB_KEY = "shop_groups.json" if _ENV == "production" else f"shop_groups_{_ENV}.json"
-
-# Module-level URL cache: survives across requests on the same warm serverless instance,
-# saving the vb.list() discovery round-trip (~200–400 ms) on subsequent calls.
-_blob_url: str | None = None
+DATA_DIR   = Path(os.environ.get("DATA_DIR", "data"))
+GROUPS_FILE = DATA_DIR / "shop_groups.json"
 
 
-# ── Blob helpers ───────────────────────────────────────────────────
+# ── File helpers ───────────────────────────────────────────────────
 
 def _load_groups():
-    global _blob_url
-    nc_headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
-
-    # Fast path: try the cached URL directly (warm instance, saves vb.list call)
-    if _blob_url:
-        try:
-            res = _http.get(_blob_url, headers=nc_headers)
-            if res.status_code == 200:
-                return json.loads(res.content)
-        except Exception:
-            pass
-        _blob_url = None  # stale — fall through to discovery
-
-    # Slow path: discover URL via listing
     try:
-        result = vb.list(options={"prefix": BLOB_KEY, "limit": "1"})
-        blobs = (result or {}).get("blobs") or []
-        if not blobs:
-            return []
-        url = blobs[0].get("downloadUrl") or blobs[0].get("url", "")
-        res = _http.get(url, headers=nc_headers)
-        res.raise_for_status()
-        _blob_url = url  # cache for next call on this instance
-        return json.loads(res.content)
+        return json.loads(GROUPS_FILE.read_bytes())
+    except FileNotFoundError:
+        return []
     except Exception:
         return []
 
 
 def _save_groups(groups):
-    global _blob_url
-    result = vb.put(
-        BLOB_KEY,
-        json.dumps(groups).encode(),
-        options={"allowOverwrite": "true", "addRandomSuffix": "false"},
-    )
-    # Cache the URL returned by put so the next load skips vb.list()
-    _blob_url = result.get("url") or result.get("downloadUrl") or _blob_url
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    GROUPS_FILE.write_text(json.dumps(groups), encoding="utf-8")
 
 
 def _pub(g):
@@ -238,10 +206,12 @@ def sg_set_icon(group_id):
         file = request.files.get("file")
         if not file:
             return jsonify({"error": "no file provided"}), 400
-        ct = file.content_type or "image/png"
-        key = f"mall_icons/{group_id}"
-        result = vb.put(key, file.read(), options={"allowOverwrite": "true", "contentType": ct})
-        icon_url = result.get("url") or result.get("downloadUrl", "")
+        ext = (file.filename or "").rsplit(".", 1)[-1].lower() or "png"
+        icons_dir = DATA_DIR / "mall_icons"
+        icons_dir.mkdir(parents=True, exist_ok=True)
+        icon_path = icons_dir / f"{group_id}.{ext}"
+        file.save(str(icon_path))
+        icon_url = f"/mall-icons/{group_id}.{ext}"
     else:
         body = request.json or {}
         icon_url = str(body.get("iconUrl", "")).strip()[:500]
@@ -251,6 +221,12 @@ def sg_set_icon(group_id):
     groups[idx]["iconUrl"] = icon_url
     _save_groups(groups)
     return jsonify({"iconUrl": icon_url})
+
+
+@app.route("/mall-icons/<path:filename>")
+def sg_icon_file(filename):
+    from flask import send_from_directory
+    return send_from_directory(str(DATA_DIR / "mall_icons"), filename)
 
 
 @app.route("/malls/api/by-ids")
