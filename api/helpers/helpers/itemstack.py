@@ -1,3 +1,31 @@
+def item_key(item):
+    """Stable identity key for a parsed item dict (result of parse()).
+    Two items are the same only if they share base type, display name,
+    AND enchants.  Use this instead of item['item'] wherever items are
+    compared for pricing / grouping."""
+    import json as _json
+    if not item:
+        return ""
+    base = item.get("item", "")
+    if not base:
+        return ""
+    meta = item.get("meta") or {}
+
+    # Canonical display-name: JSON-serialize so dicts/lists compare stably
+    dn = meta.get("display-name")
+    dn_str = _json.dumps(dn, sort_keys=True, ensure_ascii=False) if dn is not None else ""
+
+    # Enchants: sort by enchant name so ordering doesn't matter
+    enchants = meta.get("enchants") or {}
+    if isinstance(enchants, dict) and enchants:
+        ench_str = ",".join(f"{k}:{v}" for k, v in sorted(enchants.items()))
+    else:
+        ench_str = ""
+
+    # Use null bytes as delimiters — they never appear in item/enchant names
+    return f"{base}\x00{dn_str}\x00{ench_str}"
+
+
 def parse(s):
     import json
 

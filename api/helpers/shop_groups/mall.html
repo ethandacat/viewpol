@@ -1,0 +1,939 @@
+{% extends "base.html" %}
+{% block title %}Mall | ViewPol{% endblock %}
+
+{% block content %}
+<a href="/malls" class="back-link">← Back to Malls</a>
+
+<!-- Header -->
+<div id="group-header" style="margin-bottom:24px;">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div id="mall-icon-wrap" style="width:52px;height:52px;border-radius:12px;overflow:hidden;background:#1e1e1e;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:28px;">
+            <img id="mall-icon" src="" style="display:none;width:100%;height:100%;object-fit:cover;"
+                 onerror="this.style.display='none';document.getElementById('mall-icon-emoji').style.display='';" alt="">
+            <span id="mall-icon-emoji">🏬</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+            <h1 id="group-name" style="margin:0;text-align:left;font-size:22px;">Loading…</h1>
+            <div id="group-meta" style="font-size:13px;color:#555;margin-top:4px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <div id="owner-actions" style="display:none;gap:8px;">
+                <button id="add-shops-btn" class="m-btn-secondary" style="font-size:12px;padding:5px 10px;">➕ Add Shops</button>
+                <button id="settings-btn" class="m-btn-secondary" style="font-size:12px;padding:5px 10px;">⚙ Settings</button>
+                <button id="delete-btn" class="m-btn-danger" style="font-size:12px;padding:5px 10px;">🗑 Delete</button>
+            </div>
+            <div id="open-actions" style="display:none;">
+                <button id="open-add-btn" class="m-btn-secondary" style="font-size:12px;padding:5px 10px;">➕ Add Shops</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="m-tabs" style="margin-bottom:20px;">
+    <button class="m-tab active" data-tab="items">📦 Items</button>
+    <button class="m-tab" data-tab="shops">🏪 Shops</button>
+    <button class="m-tab" data-tab="market">📊 vs Market</button>
+</div>
+
+<!-- Items tab -->
+<div id="tab-items">
+    <div id="items-loading" style="color:#555;font-style:italic;">Loading…</div>
+    <div id="items-hint" style="display:none;font-size:12px;color:#444;margin-bottom:10px;">
+        Click a row to open the shop · Click a multi-shop row to expand
+    </div>
+    <table id="items-table" class="m-table" style="display:none;">
+        <thead>
+            <tr>
+                <th class="sortable" onclick="sortItems('name')">Item <span class="sarr" data-col="name"></span></th>
+                <th class="col-num sortable" onclick="sortItems('shops')">Shops <span class="sarr" data-col="shops"></span></th>
+                <th class="col-num sortable" onclick="sortItems('best')">Best Price <span class="sarr" data-col="best"></span></th>
+                <th class="col-num sortable" onclick="sortItems('avg')">Avg Price <span class="sarr" data-col="avg"></span></th>
+                <th class="col-num sortable" onclick="sortItems('vsBest')" id="vs-header">vs Market Best <span class="sarr" data-col="vsBest"></span></th>
+                <th class="col-num sortable" onclick="sortItems('type')">Type <span class="sarr" data-col="type"></span></th>
+            </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+    </table>
+    <div id="items-empty" style="display:none;color:#555;font-style:italic;">No shops in this mall yet.</div>
+</div>
+
+<!-- Shops tab -->
+<div id="tab-shops" style="display:none;">
+    <div id="shops-loading" style="color:#555;font-style:italic;">Loading…</div>
+    <div id="shops-list" class="m-shops-list" style="display:none;"></div>
+    <div id="shops-empty" style="display:none;color:#555;font-style:italic;">No shops in this mall.</div>
+</div>
+
+<!-- vs Market tab -->
+<div id="tab-market" style="display:none;">
+    <div id="market-loading" style="color:#555;font-style:italic;">Loading market data…</div>
+    <table id="market-table" class="m-table" style="display:none;">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="col-num">Mall Best</th>
+                <th class="col-num">Market Best</th>
+                <th class="col-num">vs Best</th>
+                <th class="col-num">Mall Avg</th>
+                <th class="col-num">Market Avg</th>
+                <th class="col-num">vs Avg</th>
+            </tr>
+        </thead>
+        <tbody id="market-body"></tbody>
+    </table>
+    <div id="market-empty" style="display:none;color:#555;font-style:italic;">No selling shops in this mall to compare.</div>
+</div>
+
+<!-- ─── Settings Modal ───────────────────────────────────────────── -->
+<div id="settings-modal" class="m-modal-overlay" style="display:none;">
+    <div class="m-modal-box">
+        <div class="m-modal-header">
+            <h2>Mall Settings</h2>
+            <button class="m-modal-close" onclick="closeSettings()">✕</button>
+        </div>
+        <div class="m-modal-body">
+            <label class="sg-label">Mall Name</label>
+            <input id="s-name" class="sg-input" maxlength="60" style="margin-bottom:20px;">
+
+            <label class="sg-label">Mall Icon</label>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="width:52px;height:52px;border-radius:12px;overflow:hidden;background:#1e1e1e;border:1px solid #2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px;">
+                    <img id="s-icon-preview" src="" style="display:none;width:100%;height:100%;object-fit:cover;"
+                         onerror="this.style.display='none';document.getElementById('s-icon-emoji').style.display='';" alt="">
+                    <span id="s-icon-emoji">🏬</span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <input id="s-icon-url" class="sg-input" placeholder="https://… image URL" style="margin-bottom:6px;">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <button id="s-upload-btn" class="m-btn-secondary" style="font-size:12px;padding:4px 10px;"
+                                onclick="document.getElementById('s-icon-file').click()">📁 Upload file</button>
+                        <button class="m-btn-secondary" style="font-size:12px;padding:4px 10px;color:#f87171;"
+                                onclick="document.getElementById('s-icon-url').value='';updateIconPreview('')">✕ Clear</button>
+                        <input id="s-icon-file" type="file" accept="image/*" style="display:none;">
+                    </div>
+                </div>
+            </div>
+
+            <label class="sg-label">Openness</label>
+            <div class="m-radio-group">
+                <label class="m-radio-opt">
+                    <input type="radio" name="s-open" id="s-open-false" value="false" checked>
+                    <div class="m-radio-card">
+                        <span style="font-size:22px;flex-shrink:0;">🔒</span>
+                        <div>
+                            <div style="font-size:13px;font-weight:600;color:#e0e0e0;">Closed</div>
+                            <div style="font-size:11px;color:#555;margin-top:2px;">Only you can add or remove shops</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="m-radio-opt">
+                    <input type="radio" name="s-open" id="s-open-true" value="true">
+                    <div class="m-radio-card">
+                        <span style="font-size:22px;flex-shrink:0;">🔓</span>
+                        <div>
+                            <div style="font-size:13px;font-weight:600;color:#e0e0e0;">Open</div>
+                            <div style="font-size:11px;color:#555;margin-top:2px;">Anyone can add shops (only you can remove)</div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+        </div>
+        <div class="m-modal-footer">
+            <button class="m-btn-secondary" onclick="closeSettings()">Cancel</button>
+            <button id="s-save-btn" class="m-btn-primary" onclick="saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Add Shops Modal ──────────────────────────────────────────── -->
+<div id="add-shops-modal" class="m-modal-overlay" style="display:none;">
+    <div class="m-modal-box">
+        <div class="m-modal-header">
+            <h2 id="as-title">Add Shops</h2>
+            <button class="m-modal-close" onclick="closeAddShops()">✕</button>
+        </div>
+        <div class="m-modal-body">
+            <!-- Owner tab row (has "Current" tab) -->
+            <div class="sg-tab-row" id="as-tabs-owner" style="display:none;">
+                <button class="sg-tab active" data-astab="current">📋 Current</button>
+                <button class="sg-tab" data-astab="manual">🔍 Manual</button>
+                <button class="sg-tab" data-astab="area">📍 Area</button>
+                <button class="sg-tab" data-astab="user">👤 User</button>
+            </div>
+            <!-- Non-owner tab row -->
+            <div class="sg-tab-row" id="as-tabs-open" style="display:none;">
+                <button class="sg-tab active" data-astab="manual">🔍 Manual</button>
+                <button class="sg-tab" data-astab="area">📍 Area</button>
+                <button class="sg-tab" data-astab="user">👤 User</button>
+            </div>
+
+            <!-- Current (owner only) -->
+            <div id="as-pane-current" style="display:none;">
+                <div style="font-size:12px;color:#555;margin-bottom:10px;">Shops currently in this mall — click to remove.</div>
+                <div id="as-results-current" class="sg-pick-list"></div>
+            </div>
+            <!-- Manual -->
+            <div id="as-pane-manual">
+                <input id="as-manual-q" class="sg-input" placeholder="Search by item name…" style="margin-bottom:10px;">
+                <div id="as-results-manual" class="sg-pick-list"></div>
+            </div>
+            <!-- Area -->
+            <div id="as-pane-area" style="display:none;">
+                <div class="sg-coord-row">
+                    <input id="as-ax1" class="sg-input sg-coord" type="number" placeholder="X min">
+                    <input id="as-az1" class="sg-input sg-coord" type="number" placeholder="Z min">
+                    <span class="sg-coord-arrow">→</span>
+                    <input id="as-ax2" class="sg-input sg-coord" type="number" placeholder="X max">
+                    <input id="as-az2" class="sg-input sg-coord" type="number" placeholder="Z max">
+                </div>
+                <button id="as-area-btn" class="m-btn-secondary" style="margin-top:8px;font-size:12px;padding:5px 10px;">Find Shops</button>
+                <div id="as-status-area" style="font-size:12px;color:#666;margin-top:8px;min-height:16px;"></div>
+                <div id="as-results-area" class="sg-pick-list" style="margin-top:4px;"></div>
+            </div>
+            <!-- User -->
+            <div id="as-pane-user" style="display:none;">
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <input id="as-user-q" class="sg-input" placeholder="Player name or UUID…" style="flex:1;">
+                    <button id="as-user-btn" class="m-btn-secondary" style="font-size:12px;padding:5px 10px;">Find</button>
+                </div>
+                <div id="as-status-user" style="font-size:12px;color:#666;margin-bottom:8px;min-height:16px;"></div>
+                <div id="as-results-user" class="sg-pick-list"></div>
+            </div>
+
+            <div id="as-selected-bar">
+                <span id="as-selected-count">0</span> selected
+                <button class="sg-btn-ghost" id="as-clear">Clear all</button>
+            </div>
+        </div>
+        <div class="m-modal-footer">
+            <button class="m-btn-secondary" onclick="closeAddShops()">Cancel</button>
+            <button id="as-submit" class="m-btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ─── Tabs ──────────────────────────────────────────────────────── */
+.m-tabs { display: flex; gap: 8px; }
+.m-tab { background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; color: #777; padding: 8px 18px; font-size: 13px; cursor: pointer; }
+.m-tab.active { background: #1e293b; border-color: #1e3a5f; color: #60a5fa; }
+
+/* ─── Owner action buttons ──────────────────────────────────────── */
+.m-btn-secondary { background: #252525; color: #ccc; border: 1px solid #333; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+.m-btn-secondary:hover { background: #2a2a2a; }
+.m-btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.m-btn-primary:hover { background: #1d4ed8; }
+.m-btn-primary:disabled { opacity: 0.5; cursor: default; }
+.m-btn-danger { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+.m-btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+/* ─── Main table ────────────────────────────────────────────────── */
+.m-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.m-table thead th { background: #181818; border-bottom: 1px solid #252525; padding: 10px 12px; text-align: left; color: #777; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; white-space: nowrap; }
+.m-table thead th.col-num { text-align: right; }
+.m-table thead th.sortable { cursor: pointer; user-select: none; }
+.m-table thead th.sortable:hover { color: #aaa; }
+.m-table tbody tr.item-row { border-bottom: 1px solid #1a1a1a; cursor: pointer; }
+.m-table tbody tr.item-row:hover { background: #1c1c1c; }
+.m-table tbody tr.expand-row { border-bottom: 1px solid #1a1a1a; background: #111; }
+.m-table td { padding: 10px 12px; color: #ccc; }
+.m-table td.col-num { text-align: right; }
+
+.sarr::after { content: ''; }
+.sarr.asc::after { content: ' ↑'; color: #60a5fa; }
+.sarr.desc::after { content: ' ↓'; color: #60a5fa; }
+
+.item-cell { display: flex; align-items: center; gap: 10px; }
+.item-icon { width: 28px; height: 28px; image-rendering: pixelated; object-fit: contain; flex-shrink: 0; }
+.expand-chevron { font-size: 10px; color: #444; margin-left: 6px; transition: transform 0.15s; display: inline-block; }
+.expand-chevron.open { transform: rotate(90deg); color: #60a5fa; }
+
+.expand-shops { width: 100%; border-collapse: collapse; font-size: 12px; }
+.expand-shops td { padding: 7px 12px; color: #aaa; border-bottom: 1px solid #1a1a1a; }
+.expand-shops tr:last-child td { border-bottom: none; }
+.expand-shops tr { cursor: pointer; }
+.expand-shops tr:hover td { background: #1a1a1a; }
+.expand-shops td.col-num { text-align: right; }
+.expand-shops a { color: #60a5fa; text-decoration: none; font-size: 11px; padding: 3px 8px; border: 1px solid #1e3a5f; border-radius: 5px; }
+.expand-shops a:hover { background: #1e293b; }
+
+.m-shops-list { display: flex; flex-direction: column; gap: 6px; }
+.m-shop-row { display: flex; align-items: center; gap: 12px; background: #181818; border: 1px solid #252525; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+.m-shop-row:hover { border-color: #333; }
+.m-shop-row img { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; flex-shrink: 0; }
+.m-shop-row-info { flex: 1; min-width: 0; }
+.m-shop-row-name { font-size: 14px; font-weight: 600; color: #e0e0e0; }
+.m-shop-row-sub { font-size: 11px; color: #555; }
+.m-shop-row-price { font-size: 14px; font-weight: 700; color: #aaa; flex-shrink: 0; }
+.m-shop-link { font-size: 12px; color: #60a5fa; text-decoration: none; padding: 4px 10px; border: 1px solid #1e3a5f; border-radius: 6px; flex-shrink: 0; }
+.m-shop-link:hover { background: #1e293b; }
+
+.badge-sell { background:rgba(37,99,235,.15); color:#60a5fa; border:1px solid rgba(37,99,235,.3); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; }
+.badge-buy  { background:rgba(74,222,128,.1); color:#4ade80; border:1px solid rgba(74,222,128,.25); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; }
+
+.vs-best  { color: #4ade80; font-weight: 600; }
+.vs-worse { color: #f87171; font-weight: 600; }
+.vs-same  { color: #888; }
+.vs-loading { color: #333; font-style: italic; }
+
+/* ─── Modals ────────────────────────────────────────────────────── */
+.m-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;z-index:1000; }
+.m-modal-box { background:#161616;border:1px solid #2a2a2a;border-radius:14px;width:min(580px,95vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden; }
+.m-modal-header { display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0; }
+.m-modal-header h2 { margin:0;font-size:18px;font-weight:700; }
+.m-modal-close { background:none;border:none;color:#555;font-size:18px;cursor:pointer;padding:2px 6px;line-height:1; }
+.m-modal-close:hover { color:#aaa; }
+.m-modal-body { padding:16px 20px;overflow-y:auto;flex:1;min-height:0; }
+.m-modal-footer { padding:14px 20px;display:flex;justify-content:space-between;border-top:1px solid #252525;flex-shrink:0; }
+
+/* Radio cards (openness) */
+.m-radio-group { display:flex;gap:10px;flex-wrap:wrap;margin-top:4px; }
+.m-radio-opt { flex:1;min-width:160px;cursor:pointer; }
+.m-radio-opt input[type="radio"] { position:absolute;opacity:0;width:0;height:0; }
+.m-radio-card { display:flex;align-items:center;gap:12px;background:#1a1a1a;border:2px solid #252525;border-radius:10px;padding:12px 14px;transition:border-color 0.15s; }
+.m-radio-opt input:checked + .m-radio-card { border-color:#2563eb;background:#1e293b; }
+.m-radio-card:hover { border-color:#333; }
+
+/* Shared modal/pick-list styles (same as malls.html) */
+.sg-label { font-size:11px;color:#666;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px; }
+.sg-input { width:100%;box-sizing:border-box;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#e0e0e0;font-size:14px;padding:8px 12px;outline:none;transition:border-color 0.15s; }
+.sg-input:focus { border-color:#2563eb; }
+.sg-tab-row { display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap; }
+.sg-tab { background:#1a1a1a;border:1px solid #252525;border-radius:8px;color:#777;padding:7px 16px;font-size:13px;cursor:pointer; }
+.sg-tab.active { background:#1e293b;border-color:#1e3a5f;color:#60a5fa; }
+.sg-pick-list { display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto; }
+.sg-pick-item { display:flex;align-items:center;gap:10px;background:#1a1a1a;border:1px solid #252525;border-radius:8px;padding:8px 10px;cursor:pointer;transition:border-color 0.15s; }
+.sg-pick-item:hover { border-color:#333; }
+.sg-pick-item.selected { border-color:#2563eb55;background:#1e293b; }
+.sg-pick-img { width:32px;height:32px;image-rendering:pixelated;object-fit:contain;flex-shrink:0; }
+.sg-pick-info { flex:1;min-width:0; }
+.sg-pick-name { font-size:13px;font-weight:600;color:#e0e0e0; }
+.sg-pick-sub { font-size:11px;color:#555; }
+.sg-pick-price { font-size:13px;font-weight:600;color:#aaa;flex-shrink:0; }
+.sg-coord-row { display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+.sg-coord { width:90px !important; }
+.sg-coord-arrow { color:#444;font-size:16px; }
+.sg-btn-ghost { background:none;color:#555;border:none;font-size:12px;cursor:pointer;padding:2px 6px; }
+.sg-btn-ghost:hover { color:#aaa; }
+#as-selected-bar { margin-top:14px;padding:8px 12px;background:#1a1a1a;border:1px solid #252525;border-radius:8px;font-size:13px;color:#aaa;display:flex;align-items:center; }
+#as-selected-count { font-weight:700;color:#60a5fa; }
+
+.open-badge { display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#4ade80;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:5px;padding:1px 7px;vertical-align:middle; }
+</style>
+
+<script>
+const GROUP_ID = {{ group_id | tojson }};
+const TOKEN_PREFIX = 'mall_tok_';
+
+function getToken(id)    { return localStorage.getItem(TOKEN_PREFIX + id) || null; }
+function clearToken(id)  { localStorage.removeItem(TOKEN_PREFIX + id); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function titleCase(s) { return s.toLowerCase().replace(/\w\S*/g, t => t[0].toUpperCase() + t.slice(1)); }
+function fmtAgo(ms) {
+    const s = (Date.now() - ms) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+}
+function getDisplayName(shop) {
+    const itemId = (shop.item?.item || 'unknown').toLowerCase();
+    const extra = shop.item?.meta?.['display-name']?.extra;
+    return titleCase((extra?.[0]?.text) || itemId.replace(/_/g, ' '));
+}
+function fmtPrice(n) { return (n == null || !isFinite(n)) ? '—' : (Math.round(n * 100) / 100) + 'g/ea'; }
+function fmtUnitPrice(s) {
+    const up = s.unit_price;
+    return (up && isFinite(up) && up > 0) ? (Math.round(up*100)/100) + 'g/ea' : Math.round(s.price) + 'g';
+}
+
+// ── State ─────────────────────────────────────────────────────────
+let group = null, allShops = [], itemStats = {};
+let sortCol = 'best', sortDir = 1;
+let marketLoaded = false;
+let expandedKeys = new Set();
+
+// ── Init ──────────────────────────────────────────────────────────
+(async () => {
+    const res = await fetch('/malls/api/groups/' + GROUP_ID);
+    if (!res.ok) {
+        document.getElementById('group-name').textContent = 'Mall not found';
+        document.getElementById('group-meta').textContent = 'This mall does not exist or was deleted.';
+        ['items','shops'].forEach(t => {
+            document.getElementById(t + '-loading').style.display = 'none';
+            document.getElementById(t + '-empty').style.display = '';
+        });
+        document.getElementById('market-loading').style.display = 'none';
+        return;
+    }
+    group = await res.json();
+    renderHeader();
+    await loadShops();
+    loadMarket();   // deferred — don't await
+})();
+
+function renderHeader() {
+    const isOwner = !!getToken(GROUP_ID);
+    const isOpen  = !!group.open;
+
+    // Icon
+    if (group.iconUrl) {
+        document.getElementById('mall-icon').src = group.iconUrl;
+        document.getElementById('mall-icon').style.display = '';
+        document.getElementById('mall-icon-emoji').style.display = 'none';
+    }
+
+    // Name + meta
+    document.getElementById('group-name').textContent = group.name;
+    const openBadge = isOpen ? ' &nbsp;<span class="open-badge">🔓 Open</span>' : '';
+    document.getElementById('group-meta').innerHTML =
+        group.shopIds.length + ' shop' + (group.shopIds.length !== 1 ? 's' : '') +
+        ' · Created ' + fmtAgo(group.createdAt) + openBadge;
+
+    // Action buttons
+    if (isOwner) {
+        document.getElementById('owner-actions').style.display = 'flex';
+    } else if (isOpen) {
+        document.getElementById('open-actions').style.display = 'flex';
+    }
+}
+
+// ── Main tabs ─────────────────────────────────────────────────────
+document.querySelectorAll('.m-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.m-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ['items','shops','market'].forEach(t => {
+            document.getElementById('tab-' + t).style.display = t === btn.dataset.tab ? '' : 'none';
+        });
+    });
+});
+
+// ── Delete ────────────────────────────────────────────────────────
+document.getElementById('delete-btn').addEventListener('click', async () => {
+    if (!group || !confirm('Delete "' + group.name + '"?')) return;
+    const res = await fetch('/malls/api/groups/' + GROUP_ID, {
+        method: 'DELETE', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ editToken: getToken(GROUP_ID) }),
+    });
+    if (res.ok) { clearToken(GROUP_ID); window.location.href = '/malls'; }
+    else alert('Could not delete mall.');
+});
+
+// ─────────────────────────────────────────────────────────────────
+// ── SETTINGS MODAL ────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+
+document.getElementById('settings-btn').addEventListener('click', openSettings);
+
+function openSettings() {
+    document.getElementById('s-name').value = group.name;
+    const url = group.iconUrl || '';
+    document.getElementById('s-icon-url').value = url;
+    updateIconPreview(url);
+    document.getElementById('s-open-' + (group.open ? 'true' : 'false')).checked = true;
+    document.getElementById('settings-modal').style.display = 'flex';
+}
+function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+
+// Live URL preview
+document.getElementById('s-icon-url').addEventListener('input', function() {
+    updateIconPreview(this.value.trim());
+});
+
+function updateIconPreview(url) {
+    const img  = document.getElementById('s-icon-preview');
+    const emoji = document.getElementById('s-icon-emoji');
+    if (url) {
+        img.src = url;
+        img.style.display = '';
+        emoji.style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        emoji.style.display = '';
+    }
+}
+
+// File upload → get URL, fill input
+document.getElementById('s-icon-file').addEventListener('change', async function() {
+    const file = this.files[0];
+    if (!file) return;
+    const btn = document.getElementById('s-upload-btn');
+    btn.textContent = '⏳ Uploading…'; btn.disabled = true;
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('editToken', getToken(GROUP_ID));
+        const res = await fetch(`/malls/api/groups/${GROUP_ID}/icon`, { method: 'POST', body: fd });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('s-icon-url').value = data.iconUrl;
+            updateIconPreview(data.iconUrl);
+        } else {
+            alert('Upload failed. Try pasting a URL instead.');
+        }
+    } catch(e) { alert('Upload failed.'); }
+    btn.textContent = '📁 Upload file'; btn.disabled = false;
+    this.value = '';
+});
+
+async function saveSettings() {
+    const btn = document.getElementById('s-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const name    = document.getElementById('s-name').value.trim();
+    const iconUrl = document.getElementById('s-icon-url').value.trim() || null;
+    const open    = document.querySelector('input[name="s-open"]:checked')?.value === 'true';
+    const res = await fetch('/malls/api/groups/' + GROUP_ID, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name, iconUrl, open, editToken: getToken(GROUP_ID) }),
+    });
+    btn.disabled = false; btn.textContent = 'Save';
+    if (res.ok) {
+        group = await res.json();
+        renderHeader();
+        closeSettings();
+    } else alert('Could not save settings.');
+}
+
+// Close on overlay click
+document.getElementById('settings-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeSettings();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// ── ADD SHOPS MODAL ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+
+let modalIsOwner = false;
+let modalSelectedIds = new Set();
+let modalShops = { manual: [], area: [], user: [] };
+let asManualTimer = null;
+let asActiveTab = 'manual';
+
+document.getElementById('add-shops-btn').addEventListener('click',  () => openAddShops(true));
+document.getElementById('open-add-btn').addEventListener('click',   () => openAddShops(false));
+
+function openAddShops(isOwner) {
+    modalIsOwner = isOwner;
+    // Owner: pre-populate with current shop IDs
+    modalSelectedIds = isOwner ? new Set(group.shopIds.map(String)) : new Set();
+    modalShops = { manual: [], area: [], user: [] };
+
+    // Clear inputs
+    document.getElementById('as-manual-q').value = '';
+    document.getElementById('as-user-q').value = '';
+    ['manual','area','user'].forEach(t => {
+        document.getElementById('as-results-' + t).innerHTML = '';
+        const st = document.getElementById('as-status-' + t);
+        if (st) st.textContent = '';
+    });
+    document.getElementById('as-results-current').innerHTML = '';
+
+    // Show correct tab row
+    document.getElementById('as-tabs-owner').style.display = isOwner ? '' : 'none';
+    document.getElementById('as-tabs-open').style.display  = isOwner ? 'none' : '';
+
+    // Default tab
+    const defaultTab = isOwner ? 'current' : 'manual';
+    switchAsTab(defaultTab);
+
+    // Update title
+    document.getElementById('as-title').textContent = isOwner ? 'Manage Shops' : 'Add Shops';
+
+    updateModalBar();
+    document.getElementById('add-shops-modal').style.display = 'flex';
+
+    // Render current tab right away if owner
+    if (isOwner) renderCurrentPicks();
+}
+
+function closeAddShops() { document.getElementById('add-shops-modal').style.display = 'none'; }
+
+function switchAsTab(tab) {
+    asActiveTab = tab;
+    ['current','manual','area','user'].forEach(t => {
+        const pane = document.getElementById('as-pane-' + t);
+        if (pane) pane.style.display = t === tab ? '' : 'none';
+    });
+    document.querySelectorAll('[data-astab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.astab === tab);
+    });
+    if (tab === 'current') renderCurrentPicks();
+}
+
+document.querySelectorAll('[data-astab]').forEach(btn => {
+    btn.addEventListener('click', () => switchAsTab(btn.dataset.astab));
+});
+
+function updateModalBar() {
+    document.getElementById('as-selected-count').textContent = modalSelectedIds.size;
+}
+
+function toggleModalShop(id) {
+    const s = String(id);
+    if (modalSelectedIds.has(s)) modalSelectedIds.delete(s);
+    else modalSelectedIds.add(s);
+    updateModalBar();
+    // Re-render all active lists
+    renderCurrentPicks();
+    renderModalPicks('manual', modalShops.manual);
+    renderModalPicks('area',   modalShops.area);
+    renderModalPicks('user',   modalShops.user);
+}
+
+function renderCurrentPicks() {
+    const el = document.getElementById('as-results-current');
+    if (!el) return;
+    renderModalPicks('current', allShops);
+}
+
+function renderModalPicks(tabKey, shops) {
+    const el = document.getElementById('as-results-' + tabKey);
+    if (!el) return;
+    el.innerHTML = '';
+    shops.forEach(s => {
+        const itemId = (s.item?.item || 'unknown').toLowerCase();
+        const name = getDisplayName(s);
+        const loc = s.location ? `${Math.round(s.location.x)}, ${Math.round(s.location.z)}` : '';
+        const selected = modalSelectedIds.has(String(s.id));
+        const div = document.createElement('div');
+        div.className = 'sg-pick-item' + (selected ? ' selected' : '');
+        div.innerHTML = `
+            <img class="sg-pick-img" src="https://api.earthpol.com/textures/item/${esc(itemId)}.png" onerror="this.style.display='none'" alt="">
+            <div class="sg-pick-info">
+                <div class="sg-pick-name">${esc(name)}</div>
+                <div class="sg-pick-sub">${s.type === 'SELLING' ? 'Selling' : 'Buying'}${loc ? ' · ' + loc : ''}</div>
+            </div>
+            <div class="sg-pick-price">${fmtUnitPrice(s)}</div>`;
+        div.addEventListener('click', () => toggleModalShop(s.id));
+        el.appendChild(div);
+    });
+}
+
+// Manual search
+document.getElementById('as-manual-q').addEventListener('input', function() {
+    clearTimeout(asManualTimer);
+    const q = this.value.trim();
+    if (!q) { modalShops.manual = []; renderModalPicks('manual', []); return; }
+    asManualTimer = setTimeout(async () => {
+        const res = await fetch(`/shops/data?q=${encodeURIComponent(q.toLowerCase())}&page=1&stock_filter=show&type_filter=both`).then(r => r.json());
+        modalShops.manual = res.players || [];
+        renderModalPicks('manual', modalShops.manual);
+    }, 300);
+});
+
+// Area search
+document.getElementById('as-area-btn').addEventListener('click', async () => {
+    const x1 = document.getElementById('as-ax1').value, z1 = document.getElementById('as-az1').value;
+    const x2 = document.getElementById('as-ax2').value, z2 = document.getElementById('as-az2').value;
+    if (!x1 || !z1 || !x2 || !z2) { document.getElementById('as-status-area').textContent = 'Fill in all four fields.'; return; }
+    document.getElementById('as-status-area').textContent = 'Searching…';
+    const res = await fetch('/malls/api/area?' + new URLSearchParams({x1,z1,x2,z2})).then(r => r.json());
+    modalShops.area = Array.isArray(res) ? res : [];
+    document.getElementById('as-status-area').textContent =
+        modalShops.area.length ? modalShops.area.length + ' shops found.' : 'No shops found.';
+    renderModalPicks('area', modalShops.area);
+});
+
+// User search
+document.getElementById('as-user-btn').addEventListener('click', async () => {
+    const q = document.getElementById('as-user-q').value.trim();
+    if (!q) return;
+    document.getElementById('as-status-user').textContent = 'Searching…';
+    document.getElementById('as-results-user').innerHTML = '';
+    const res = await fetch('/malls/api/user-shops?user=' + encodeURIComponent(q)).then(r => r.json());
+    if (res.error) {
+        document.getElementById('as-status-user').textContent = res.error;
+        modalShops.user = [];
+    } else {
+        modalShops.user = res.shops || [];
+        const n = modalShops.user.length;
+        const addAll = n ? ` <button class="sg-btn-ghost" id="as-add-all" style="color:#60a5fa;">Select all (${n})</button>` : '';
+        document.getElementById('as-status-user').innerHTML =
+            `Found ${n} shop${n !== 1 ? 's' : ''} by <b>${esc(res.username)}</b>.${addAll}`;
+        document.getElementById('as-add-all')?.addEventListener('click', () => {
+            modalShops.user.forEach(s => modalSelectedIds.add(String(s.id)));
+            updateModalBar();
+            renderCurrentPicks();
+            renderModalPicks('manual', modalShops.manual);
+            renderModalPicks('area',   modalShops.area);
+            renderModalPicks('user',   modalShops.user);
+        });
+    }
+    renderModalPicks('user', modalShops.user);
+});
+document.getElementById('as-user-q').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('as-user-btn').click();
+});
+
+// Clear
+document.getElementById('as-clear').addEventListener('click', () => {
+    modalSelectedIds.clear(); updateModalBar();
+    renderCurrentPicks();
+    renderModalPicks('manual', modalShops.manual);
+    renderModalPicks('area',   modalShops.area);
+    renderModalPicks('user',   modalShops.user);
+});
+
+// Submit
+document.getElementById('as-submit').addEventListener('click', async () => {
+    const btn = document.getElementById('as-submit');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    let body;
+    if (modalIsOwner) {
+        body = { editToken: getToken(GROUP_ID), shopIds: Array.from(modalSelectedIds) };
+    } else {
+        body = { addIds: Array.from(modalSelectedIds) };
+    }
+
+    const res = await fetch('/malls/api/groups/' + GROUP_ID + '/shops', {
+        method: 'PATCH', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+    });
+    btn.disabled = false; btn.textContent = 'Save';
+    if (res.ok) {
+        group = await res.json();
+        renderHeader();
+        closeAddShops();
+        await loadShops();
+        loadMarket();
+    } else alert('Could not update shops.');
+});
+
+document.getElementById('add-shops-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddShops();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// ── SHOP DATA ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+
+async function loadShops() {
+    if (!group?.shopIds?.length) {
+        ['items','shops'].forEach(t => {
+            document.getElementById(t + '-loading').style.display = 'none';
+            document.getElementById(t + '-empty').style.display = '';
+        });
+        return;
+    }
+    const res = await fetch('/malls/api/by-ids?ids=' + group.shopIds.join(',')).then(r => r.json());
+    allShops = Array.isArray(res) ? res : [];
+    buildItemStats();
+    renderItemsTab();
+    renderShopsTab();
+}
+
+function buildItemStats() {
+    itemStats = {};
+    for (const s of allShops) {
+        const id = s.item?.item || 'unknown';
+        if (!itemStats[id]) itemStats[id] = { name: getDisplayName(s), itemId: id, shops: [], types: new Set(), marketBest: null, marketAvg: null, vsBest: null, vsAvg: null };
+        itemStats[id].shops.push(s);
+        itemStats[id].types.add(s.type);
+    }
+    for (const k of Object.keys(itemStats)) {
+        const prices = itemStats[k].shops.map(s => s.unit_price).filter(p => p != null && isFinite(p) && p > 0);
+        itemStats[k].best = prices.length ? Math.min(...prices) : null;
+        itemStats[k].avg  = prices.length ? prices.reduce((a,b) => a+b, 0) / prices.length : null;
+        const t = itemStats[k].types;
+        itemStats[k].type = t.size > 1 ? 'MIXED' : [...t][0];
+    }
+}
+
+// ── Market data (deferred) ────────────────────────────────────────
+async function loadMarket() {
+    const sellingItems = Object.keys(itemStats).filter(k => itemStats[k].type !== 'BUYING');
+    if (!sellingItems.length) {
+        document.getElementById('market-loading').style.display = 'none';
+        document.getElementById('market-empty').style.display = '';
+        return;
+    }
+    const mkt = await fetch('/malls/api/market-stats?items=' + sellingItems.join(',')).then(r => r.json());
+    for (const k of sellingItems) {
+        const m = mkt[k];
+        if (m && itemStats[k]?.best != null) {
+            itemStats[k].marketBest = m.min;
+            itemStats[k].marketAvg  = m.avg;
+            itemStats[k].vsBest = m.min > 0 ? (itemStats[k].best - m.min) / m.min * 100 : null;
+            itemStats[k].vsAvg  = m.avg > 0 ? (itemStats[k].avg  - m.avg)  / m.avg  * 100 : null;
+        }
+    }
+    marketLoaded = true;
+    if (document.getElementById('items-table').style.display !== 'none') renderItemsTab();
+    renderMarketTab(mkt, sellingItems);
+}
+
+// ── Sort ──────────────────────────────────────────────────────────
+function sortItems(col) {
+    if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+    renderItemsTab();
+}
+
+function getSortVal(it, col) {
+    if (col === 'shops')  return it.shops.length;
+    if (col === 'name')   return it.name.toLowerCase();
+    if (col === 'type')   return it.type || '';
+    if (col === 'vsBest') return it.vsBest ?? Infinity;
+    return it[col] ?? Infinity;
+}
+
+// ── Items tab ─────────────────────────────────────────────────────
+function renderItemsTab() {
+    document.getElementById('items-loading').style.display = 'none';
+    const data = Object.values(itemStats);
+    if (!data.length) { document.getElementById('items-empty').style.display = ''; return; }
+
+    data.sort((a, b) => {
+        const va = getSortVal(a, sortCol), vb = getSortVal(b, sortCol);
+        if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+        return (va - vb) * sortDir;
+    });
+
+    document.querySelectorAll('.sarr').forEach(el => {
+        el.className = 'sarr' + (el.dataset.col === sortCol ? (sortDir === 1 ? ' asc' : ' desc') : '');
+    });
+
+    const tbody = document.getElementById('items-body');
+    tbody.innerHTML = '';
+
+    data.forEach(it => {
+        const multi = it.shops.length > 1;
+        const badge = it.type === 'SELLING' ? '<span class="badge-sell">Sell</span>'
+                    : it.type === 'BUYING'  ? '<span class="badge-buy">Buy</span>'
+                    : '<span style="color:#888;font-size:11px;">Mixed</span>';
+        const vsCell = fmtVsBest(it);
+        const chevron = multi ? `<span class="expand-chevron${expandedKeys.has(it.itemId) ? ' open' : ''}">▶</span>` : '';
+
+        const tr = document.createElement('tr');
+        tr.className = 'item-row';
+        tr.dataset.key = it.itemId;
+        tr.innerHTML = `
+            <td><div class="item-cell">
+                <img class="item-icon" src="https://api.earthpol.com/textures/item/${esc(it.itemId.toLowerCase())}.png" onerror="this.style.display='none'" alt="">
+                ${esc(it.name)}${chevron}
+            </div></td>
+            <td class="col-num">${it.shops.length}</td>
+            <td class="col-num">${fmtPrice(it.best)}</td>
+            <td class="col-num">${fmtPrice(it.avg)}</td>
+            <td class="col-num">${vsCell}</td>
+            <td class="col-num">${badge}</td>`;
+
+        if (multi) tr.addEventListener('click', () => toggleExpand(it.itemId));
+        else       tr.addEventListener('click', () => window.location.href = '/shops/' + it.shops[0].id);
+        tbody.appendChild(tr);
+
+        if (multi) {
+            const expTr = document.createElement('tr');
+            expTr.className = 'expand-row';
+            expTr.dataset.key = it.itemId;
+            expTr.style.display = expandedKeys.has(it.itemId) ? '' : 'none';
+            expTr.innerHTML = `<td colspan="6" style="padding:0;">${buildExpandTable(it)}</td>`;
+            tbody.appendChild(expTr);
+        }
+    });
+
+    document.getElementById('items-hint').style.display = '';
+    document.getElementById('items-table').style.display = '';
+}
+
+function fmtVsBest(it) {
+    if (!marketLoaded) return '<span class="vs-loading">…</span>';
+    if (it.vsBest == null) return '<span class="vs-same">—</span>';
+    if (it.vsBest <= 0.5) return '<span class="vs-best">✓ Best price</span>';
+    return `<span class="vs-worse">+${it.vsBest.toFixed(1)}% above best</span>`;
+}
+
+function buildExpandTable(it) {
+    const rows = it.shops.map(s => {
+        const loc = s.location ? `${Math.round(s.location.x)}, ${Math.round(s.location.z)}` : '—';
+        const stock = s.type === 'SELLING'
+            ? (s.stock <= 0 ? '<span style="color:#555">Out of stock</span>' : s.stock + ' in stock')
+            : (s.space <= 0 ? '<span style="color:#555">Out of space</span>' : s.space + ' space');
+        return `<tr onclick="window.location.href='/shops/${s.id}'">
+            <td style="padding-left:52px;">${fmtPrice(s.unit_price)}</td>
+            <td class="col-num">${stock}</td>
+            <td class="col-num" style="color:#555;">${esc(loc)}</td>
+            <td class="col-num"><a href="/shops/${s.id}" onclick="event.stopPropagation()">View →</a></td>
+        </tr>`;
+    }).join('');
+    return `<table class="expand-shops">${rows}</table>`;
+}
+
+function toggleExpand(key) {
+    if (expandedKeys.has(key)) expandedKeys.delete(key); else expandedKeys.add(key);
+    const chevron = document.querySelector(`tr.item-row[data-key="${CSS.escape(key)}"] .expand-chevron`);
+    const expRow  = document.querySelector(`tr.expand-row[data-key="${CSS.escape(key)}"]`);
+    if (chevron) chevron.classList.toggle('open', expandedKeys.has(key));
+    if (expRow)  expRow.style.display = expandedKeys.has(key) ? '' : 'none';
+}
+
+// ── Shops tab ─────────────────────────────────────────────────────
+function renderShopsTab() {
+    document.getElementById('shops-loading').style.display = 'none';
+    if (!allShops.length) { document.getElementById('shops-empty').style.display = ''; return; }
+    const list = document.getElementById('shops-list');
+    list.innerHTML = '';
+    allShops.forEach(s => {
+        const name = getDisplayName(s);
+        const itemId = (s.item?.item || 'unknown').toLowerCase();
+        const loc = s.location ? `${Math.round(s.location.x)}, ${Math.round(s.location.z)}` : '';
+        const badge = s.type === 'SELLING' ? '<span class="badge-sell">Selling</span>' : '<span class="badge-buy">Buying</span>';
+        const div = document.createElement('div');
+        div.className = 'm-shop-row';
+        div.addEventListener('click', () => window.location.href = '/shops/' + s.id);
+        div.innerHTML = `
+            <img src="https://api.earthpol.com/textures/item/${esc(itemId)}.png" onerror="this.style.display='none'" alt="">
+            <div class="m-shop-row-info">
+                <div class="m-shop-row-name">${esc(name)}</div>
+                <div class="m-shop-row-sub">${badge} · ${esc(loc)}</div>
+            </div>
+            <div class="m-shop-row-price">${fmtPrice(s.unit_price)}</div>
+            <a href="/shops/${s.id}" class="m-shop-link" onclick="event.stopPropagation()">View →</a>`;
+        list.appendChild(div);
+    });
+    list.style.display = '';
+}
+
+// ── vs Market tab ─────────────────────────────────────────────────
+function renderMarketTab(mkt, sellingItems) {
+    document.getElementById('market-loading').style.display = 'none';
+    if (!sellingItems.length) { document.getElementById('market-empty').style.display = ''; return; }
+    const tbody = document.getElementById('market-body');
+    tbody.innerHTML = '';
+    const sorted = sellingItems
+        .map(k => itemStats[k])
+        .sort((a, b) => (b.vsBest ?? -Infinity) - (a.vsBest ?? -Infinity));
+    sorted.forEach(it => {
+        const m = mkt[it.itemId];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><div class="item-cell">
+                <img class="item-icon" src="https://api.earthpol.com/textures/item/${esc(it.itemId.toLowerCase())}.png" onerror="this.style.display='none'" alt="">
+                ${esc(it.name)}
+            </div></td>
+            <td class="col-num">${fmtPrice(it.best)}</td>
+            <td class="col-num">${m ? fmtPrice(m.min) : '—'}</td>
+            <td class="col-num">${fmtVsBestDetailed(it.vsBest)}</td>
+            <td class="col-num">${fmtPrice(it.avg)}</td>
+            <td class="col-num">${m ? fmtPrice(m.avg) + '<span style="color:#444;font-size:10px;margin-left:4px;">(' + m.count + ')</span>' : '—'}</td>
+            <td class="col-num">${fmtVsAvg(it.vsAvg)}</td>`;
+        tbody.appendChild(tr);
+    });
+    document.getElementById('market-table').style.display = '';
+}
+
+function fmtVsBestDetailed(pct) {
+    if (pct == null) return '<span class="vs-same">—</span>';
+    if (pct <= 0.5)  return '<span class="vs-best">✓ Best price</span>';
+    return `<span class="vs-worse">+${pct.toFixed(1)}%</span>`;
+}
+function fmtVsAvg(pct) {
+    if (pct == null) return '<span class="vs-same">—</span>';
+    if (pct < -1)  return `<span class="vs-best">${pct.toFixed(1)}% cheaper</span>`;
+    if (pct > 1)   return `<span class="vs-worse">+${pct.toFixed(1)}% pricier</span>`;
+    return '<span class="vs-same">~same</span>';
+}
+</script>
+{% endblock %}

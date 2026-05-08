@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+{% block title %}Malls | ViewPol{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <h1 style="margin:0;">Malls</h1>
+    <button id="create-btn" class="sg-btn-primary">+ New Mall</button>
+</div>
+
+<div class="sg-page-tabs" style="margin-bottom:20px;">
+    <button class="sg-page-tab active" data-ptab="all">🏬 All Malls</button>
+    <button class="sg-page-tab" data-ptab="rankings">🏆 Rankings</button>
+</div>
+
+<div id="ptab-all">
+    <div id="groups-loading" style="color:#555;font-style:italic;">Loading…</div>
+    <div id="groups-grid" class="groups-grid" style="display:none;"></div>
+    <div id="no-groups" style="display:none;text-align:center;color:#555;font-style:italic;padding:60px 0;">
+        No malls yet. Create one to start comparing shop prices!
+    </div>
+</div>
+
+<!-- Rankings pane -->
+<div id="ptab-rankings" style="display:none;">
+    <p style="font-size:12px;color:#555;margin:0 0 18px;line-height:1.7;">
+        Ranked by <b style="color:#888;">Overall Score</b> (0–100) — equal blend of
+        <b style="color:#888;">Completeness</b> (unique items relative to the richest mall) and
+        <b style="color:#888;">Price Score</b> (how close to the server-wide market best price).
+        Click any column header to re-sort.
+    </p>
+    <div id="rankings-loading" style="color:#555;font-style:italic;">Loading rankings…</div>
+    <div style="overflow-x:auto;">
+    <table id="rankings-table" class="sg-rank-table" style="display:none;">
+        <thead>
+            <tr>
+                <th class="sg-rank-th" onclick="sortRankings('rank')" style="width:40px;"># <span class="sg-rarr" data-rcol="rank"></span></th>
+                <th class="sg-rank-th" onclick="sortRankings('name')">Mall <span class="sg-rarr" data-rcol="name"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('itemCount')">Items <span class="sg-rarr" data-rcol="itemCount"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('shopCount')">Shops <span class="sg-rarr" data-rcol="shopCount"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('itemsAtBest')">At Best Price <span class="sg-rarr" data-rcol="itemsAtBest"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('avgVsBest')">Avg Premium <span class="sg-rarr" data-rcol="avgVsBest"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('priceScore')">Price Score <span class="sg-rarr" data-rcol="priceScore"></span></th>
+                <th class="sg-rank-th col-r sg-rank-active-col" onclick="sortRankings('overallScore')">Overall <span class="sg-rarr desc" data-rcol="overallScore"></span></th>
+            </tr>
+        </thead>
+        <tbody id="rankings-body"></tbody>
+    </table>
+    </div>
+    <div id="rankings-empty" style="display:none;color:#555;font-style:italic;padding:40px 0;text-align:center;">
+        No malls to rank yet.
+    </div>
+</div>
+
+<!-- Create modal -->
+<div id="modal" class="sg-modal-overlay" style="display:none;">
+    <div class="sg-modal-box">
+
+        <!-- Step 1: Name -->
+        <div id="step-1">
+            <div class="sg-modal-header">
+                <h2>New Mall</h2>
+                <button class="sg-modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="sg-modal-body">
+                <label class="sg-label">Mall Name</label>
+                <input id="group-name-input" class="sg-input" placeholder="e.g. Spawn Market, Walmart District" maxlength="60">
+            </div>
+            <div class="sg-modal-footer">
+                <button class="sg-btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="sg-btn-primary" id="step1-next">Next →</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Add shops -->
+        <div id="step-2" style="display:none;">
+            <div class="sg-modal-header">
+                <h2 id="step2-title">Add Shops</h2>
+                <button class="sg-modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="sg-modal-body">
+                <div class="sg-tab-row">
+                    <button class="sg-tab active" data-tab="manual">🔍 Manual</button>
+                    <button class="sg-tab" data-tab="area">📍 Area</button>
+                    <button class="sg-tab" data-tab="user">👤 User</button>
+                </div>
+
+                <!-- Manual -->
+                <div id="tab-manual" class="sg-tab-pane">
+                    <input id="manual-q" class="sg-input" placeholder="Search by item name…" style="margin-bottom:10px;">
+                    <div id="manual-results" class="sg-pick-list"></div>
+                </div>
+
+                <!-- Area -->
+                <div id="tab-area" class="sg-tab-pane" style="display:none;">
+                    <div class="sg-coord-row">
+                        <input id="ax1" class="sg-input sg-coord" type="number" placeholder="X min">
+                        <input id="az1" class="sg-input sg-coord" type="number" placeholder="Z min">
+                        <span class="sg-coord-arrow">→</span>
+                        <input id="ax2" class="sg-input sg-coord" type="number" placeholder="X max">
+                        <input id="az2" class="sg-input sg-coord" type="number" placeholder="Z max">
+                    </div>
+                    <button id="area-search-btn" class="sg-btn-secondary" style="margin-top:8px;">Find Shops</button>
+                    <div id="area-status" style="font-size:12px;color:#666;margin-top:8px;min-height:16px;"></div>
+                    <div id="area-results" class="sg-pick-list" style="margin-top:4px;"></div>
+                </div>
+
+                <!-- User -->
+                <div id="tab-user" class="sg-tab-pane" style="display:none;">
+                    <div style="display:flex;gap:8px;margin-bottom:8px;">
+                        <input id="user-q" class="sg-input" placeholder="Player name or UUID…" style="flex:1;">
+                        <button id="user-search-btn" class="sg-btn-secondary">Find Shops</button>
+                    </div>
+                    <div id="user-status" style="font-size:12px;color:#666;margin-bottom:8px;min-height:16px;"></div>
+                    <div id="user-results" class="sg-pick-list"></div>
+                </div>
+
+                <div id="selected-bar">
+                    <span id="selected-count">0</span> shops selected
+                    <button class="sg-btn-ghost" id="clear-selected" style="margin-left:8px;">Clear</button>
+                </div>
+            </div>
+            <div class="sg-modal-footer">
+                <button class="sg-btn-secondary" id="step2-back">← Back</button>
+                <button class="sg-btn-primary" id="step2-create">Create Mall</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+.groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.sg-group-card { background: #181818; border: 1px solid #252525; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s, transform 0.15s; }
+.sg-group-card:hover { border-color: #333; transform: translateY(-2px); }
+.sg-group-card.mine { border-color: #1e3a5f55; }
+.sg-group-name { font-size: 16px; font-weight: 700; color: #f0f0f0; }
+.sg-group-meta { font-size: 12px; color: #555; }
+.sg-group-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.sg-owner-badge { font-size: 10px; font-weight: 600; color: #60a5fa; background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.25); border-radius: 6px; padding: 1px 7px; align-self: flex-start; }
+
+.sg-btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.sg-btn-primary:hover { background: #1d4ed8; }
+.sg-btn-primary:disabled { opacity: 0.5; cursor: default; }
+.sg-btn-secondary { background: #252525; color: #ccc; border: 1px solid #333; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.sg-btn-secondary:hover { background: #2a2a2a; }
+.sg-btn-ghost { background: none; color: #555; border: none; font-size: 12px; cursor: pointer; padding: 2px 6px; }
+.sg-btn-ghost:hover { color: #aaa; }
+.sg-btn-danger { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+.sg-btn-danger:hover { background: rgba(239,68,68,0.2); }
+.sg-btn-view { background: #1e293b; color: #60a5fa; border: 1px solid #1e3a5f; border-radius: 8px; padding: 6px 12px; font-size: 12px; text-decoration: none; font-weight: 500; }
+.sg-btn-view:hover { background: #1e3a5f; color: #93c5fd; }
+
+.sg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.sg-modal-box { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; width: min(580px, 95vw); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.sg-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; flex-shrink: 0; }
+.sg-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.sg-modal-close { background: none; border: none; color: #555; font-size: 18px; cursor: pointer; padding: 2px 6px; line-height: 1; }
+.sg-modal-close:hover { color: #aaa; }
+.sg-modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; min-height: 0; }
+.sg-modal-footer { padding: 14px 20px; display: flex; justify-content: space-between; border-top: 1px solid #252525; flex-shrink: 0; }
+
+.sg-label { font-size: 11px; color: #666; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.sg-input { width: 100%; box-sizing: border-box; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; color: #e0e0e0; font-size: 14px; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
+.sg-input:focus { border-color: #2563eb; }
+
+.sg-tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.sg-tab { background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; color: #777; padding: 7px 16px; font-size: 13px; cursor: pointer; }
+.sg-tab.active { background: #1e293b; border-color: #1e3a5f; color: #60a5fa; }
+
+.sg-pick-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.sg-pick-item { display: flex; align-items: center; gap: 10px; background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: border-color 0.15s; }
+.sg-pick-item:hover { border-color: #333; }
+.sg-pick-item.selected { border-color: #2563eb55; background: #1e293b; }
+.sg-pick-img { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; flex-shrink: 0; }
+.sg-pick-info { flex: 1; min-width: 0; }
+.sg-pick-name { font-size: 13px; font-weight: 600; color: #e0e0e0; }
+.sg-pick-sub  { font-size: 11px; color: #555; }
+.sg-pick-price { font-size: 13px; font-weight: 600; color: #aaa; flex-shrink: 0; }
+
+.sg-coord-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sg-coord { width: 90px !important; }
+.sg-coord-arrow { color: #444; font-size: 16px; }
+
+#selected-bar { margin-top: 14px; padding: 8px 12px; background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; font-size: 13px; color: #aaa; display: flex; align-items: center; }
+#selected-count { font-weight: 700; color: #60a5fa; }
+
+/* ─── Page tabs ──────────────────────────────────────────────── */
+.sg-page-tabs { display: flex; gap: 8px; }
+.sg-page-tab { background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; color: #777; padding: 8px 18px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.sg-page-tab:hover:not(.active) { color: #aaa; background: #1d1d1d; }
+.sg-page-tab.active { background: #1e293b; border-color: #1e3a5f; color: #60a5fa; }
+
+/* ─── Rankings table ─────────────────────────────────────────── */
+.sg-rank-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+.sg-rank-th { background: #181818; border-bottom: 1px solid #252525; padding: 10px 12px; text-align: left; color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.12s; }
+.sg-rank-th:hover { color: #aaa; }
+.sg-rank-th.col-r { text-align: right; }
+.sg-rank-th.sg-rank-active-col { color: #60a5fa; }
+.sg-rank-table tbody tr { border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background 0.1s; }
+.sg-rank-table tbody tr:hover { background: #1c1c1c; }
+.sg-rank-table td { padding: 10px 12px; color: #ccc; vertical-align: middle; }
+.sg-rank-table td.col-r { text-align: right; }
+.sg-rarr::after { content: ''; }
+.sg-rarr.asc::after  { content: ' ↑'; color: #60a5fa; }
+.sg-rarr.desc::after { content: ' ↓'; color: #60a5fa; }
+.rk-green  { color: #4ade80; font-weight: 600; }
+.rk-yellow { color: #fbbf24; font-weight: 600; }
+.rk-red    { color: #f87171; font-weight: 600; }
+.rk-dim    { color: #444; }
+.rk-score  { font-size: 15px; font-weight: 700; }
+</style>
+
+<script>
+const TOKEN_PREFIX = 'mall_tok_';
+
+function getToken(id)    { return localStorage.getItem(TOKEN_PREFIX + id) || null; }
+function setToken(id, t) { localStorage.setItem(TOKEN_PREFIX + id, t); }
+function clearToken(id)  { localStorage.removeItem(TOKEN_PREFIX + id); }
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtAgo(ms) {
+    const s = (Date.now() - ms) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+}
+function titleCase(s) { return s.toLowerCase().replace(/\w\S*/g, t => t[0].toUpperCase() + t.slice(1)); }
+function getDisplayName(shop) {
+    const itemId = (shop.item?.item || 'unknown').toLowerCase();
+    const extra = shop.item?.meta?.['display-name']?.extra;
+    return titleCase((extra?.[0]?.text) || itemId.replace(/_/g, ' '));
+}
+function fmtUnitPrice(shop) {
+    const up = shop.unit_price;
+    return (up && isFinite(up) && up > 0) ? (Math.round(up * 100) / 100) + 'g/ea' : Math.round(shop.price) + 'g';
+}
+
+// ── Malls list ─────────────────────────────────────────────────────
+async function loadGroups() {
+    const groups = await fetch('/malls/api/groups').then(r => r.json());
+    document.getElementById('groups-loading').style.display = 'none';
+    const grid = document.getElementById('groups-grid');
+    const none = document.getElementById('no-groups');
+    if (!groups.length) { none.style.display = 'block'; return; }
+    grid.style.display = '';
+    grid.innerHTML = '';
+    groups.forEach(g => {
+        const mine = !!getToken(g.id);
+        const card = document.createElement('div');
+        card.className = 'sg-group-card' + (mine ? ' mine' : '');
+        const iconHtml = g.iconUrl
+            ? `<img src="${esc(g.iconUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.outerHTML='<span style=\\'font-size:24px;\\'>🏬</span>'" alt="">`
+            : `<span style="font-size:24px;">🏬</span>`;
+        const openBadge = g.open ? '<span style="font-size:10px;color:#4ade80;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:5px;padding:1px 7px;">🔓 Open</span>' : '';
+        card.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="width:40px;height:40px;border-radius:8px;background:#1e1e1e;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${iconHtml}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+                        <div class="sg-group-name" style="word-break:break-word;">${esc(g.name)}</div>
+                        ${mine ? '<span class="sg-owner-badge">✏ Yours</span>' : ''}
+                    </div>
+                    <div class="sg-group-meta" style="margin-top:3px;">${g.shopIds.length} shop${g.shopIds.length !== 1 ? 's' : ''} · ${fmtAgo(g.createdAt)}${g.open ? ' · ' : ''}${openBadge}</div>
+                </div>
+            </div>
+            <div class="sg-group-actions">
+                <a href="/malls/${g.id}" class="sg-btn-view">View →</a>
+                ${mine ? `<button class="sg-btn-danger" onclick="deleteMall('${g.id}', this)">Delete</button>` : ''}
+            </div>`;
+        grid.appendChild(card);
+    });
+}
+
+async function deleteMall(id, btn) {
+    const token = getToken(id);
+    if (!token || !confirm('Delete this mall?')) return;
+    btn.disabled = true;
+    const res = await fetch('/malls/api/groups/' + id, {
+        method: 'DELETE',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ editToken: token }),
+    });
+    if (res.ok) { clearToken(id); loadGroups(); }
+    else { btn.disabled = false; alert('Could not delete mall.'); }
+}
+
+// ── Modal ──────────────────────────────────────────────────────────
+let pendingName = '';
+let selectedIds = new Set();
+let manualShops = [], areaShops = [], userShops = [];
+
+function openModal() {
+    pendingName = ''; selectedIds = new Set();
+    manualShops = []; areaShops = []; userShops = [];
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('manual-q').value = '';
+    document.getElementById('user-q').value = '';
+    ['manual-results','area-results','user-results'].forEach(id => document.getElementById(id).innerHTML = '');
+    document.getElementById('area-status').textContent = '';
+    document.getElementById('user-status').textContent = '';
+    // Reset tabs to Manual
+    document.querySelectorAll('.sg-tab').forEach(b => b.classList.remove('active'));
+    document.querySelector('.sg-tab[data-tab="manual"]').classList.add('active');
+    document.getElementById('tab-manual').style.display = '';
+    document.getElementById('tab-area').style.display = 'none';
+    document.getElementById('tab-user').style.display = 'none';
+    showStep(1);
+    document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+function showStep(n) {
+    document.getElementById('step-1').style.display = n === 1 ? '' : 'none';
+    document.getElementById('step-2').style.display = n === 2 ? '' : 'none';
+}
+function updateBar() { document.getElementById('selected-count').textContent = selectedIds.size; }
+
+function toggleShop(id) {
+    if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+    updateBar();
+    renderPicks('manual-results', manualShops);
+    renderPicks('area-results', areaShops);
+    renderPicks('user-results', userShops);
+}
+
+function renderPicks(containerId, shops) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = '';
+    shops.forEach(s => {
+        const itemId = (s.item?.item || 'unknown').toLowerCase();
+        const name = getDisplayName(s);
+        const loc = s.location ? `${Math.round(s.location.x)}, ${Math.round(s.location.z)}` : '';
+        const div = document.createElement('div');
+        div.className = 'sg-pick-item' + (selectedIds.has(s.id) ? ' selected' : '');
+        div.innerHTML = `
+            <img class="sg-pick-img" src="https://api.earthpol.com/textures/item/${esc(itemId)}.png" onerror="this.style.display='none'" alt="">
+            <div class="sg-pick-info">
+                <div class="sg-pick-name">${esc(name)}</div>
+                <div class="sg-pick-sub">${s.type === 'SELLING' ? 'Selling' : 'Buying'}${loc ? ' · ' + loc : ''}</div>
+            </div>
+            <div class="sg-pick-price">${fmtUnitPrice(s)}</div>`;
+        div.addEventListener('click', () => toggleShop(s.id));
+        el.appendChild(div);
+    });
+}
+
+// Tabs
+document.querySelectorAll('.sg-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.sg-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        document.getElementById('tab-manual').style.display = tab === 'manual' ? '' : 'none';
+        document.getElementById('tab-area').style.display   = tab === 'area'   ? '' : 'none';
+        document.getElementById('tab-user').style.display   = tab === 'user'   ? '' : 'none';
+    });
+});
+
+// Manual search
+let manualTimer = null;
+document.getElementById('manual-q').addEventListener('input', function() {
+    clearTimeout(manualTimer);
+    const q = this.value.trim();
+    if (!q) { manualShops = []; renderPicks('manual-results', []); return; }
+    manualTimer = setTimeout(async () => {
+        const res = await fetch(`/shops/data?q=${encodeURIComponent(q.toLowerCase())}&page=1&stock_filter=show&type_filter=both`).then(r => r.json());
+        manualShops = res.players || [];
+        renderPicks('manual-results', manualShops);
+    }, 300);
+});
+
+// Area search
+document.getElementById('area-search-btn').addEventListener('click', async () => {
+    const x1 = document.getElementById('ax1').value, z1 = document.getElementById('az1').value;
+    const x2 = document.getElementById('ax2').value, z2 = document.getElementById('az2').value;
+    if (!x1 || !z1 || !x2 || !z2) { document.getElementById('area-status').textContent = 'Fill in all four coordinate fields.'; return; }
+    document.getElementById('area-status').textContent = 'Searching…';
+    const res = await fetch('/malls/api/area?' + new URLSearchParams({x1,z1,x2,z2})).then(r => r.json());
+    areaShops = Array.isArray(res) ? res : [];
+    document.getElementById('area-status').textContent = areaShops.length
+        ? areaShops.length + ' shops found.'
+        : 'No shops found in this area.';
+    renderPicks('area-results', areaShops);
+});
+
+// User search
+document.getElementById('user-search-btn').addEventListener('click', async () => {
+    const q = document.getElementById('user-q').value.trim();
+    if (!q) return;
+    document.getElementById('user-status').textContent = 'Searching…';
+    document.getElementById('user-results').innerHTML = '';
+    const res = await fetch('/malls/api/user-shops?user=' + encodeURIComponent(q)).then(r => r.json());
+    if (res.error) {
+        document.getElementById('user-status').textContent = res.error;
+        userShops = [];
+    } else {
+        userShops = res.shops || [];
+        const addAll = `<button class="sg-btn-secondary" id="user-add-all" style="font-size:12px;padding:5px 10px;margin-bottom:8px;">Select All (${userShops.length})</button>`;
+        document.getElementById('user-status').innerHTML =
+            `Found ${userShops.length} shop${userShops.length !== 1 ? 's' : ''} by <b>${esc(res.username)}</b>. ` + (userShops.length ? addAll : '');
+        document.getElementById('user-add-all')?.addEventListener('click', () => {
+            userShops.forEach(s => selectedIds.add(s.id));
+            updateBar();
+            renderPicks('manual-results', manualShops);
+            renderPicks('area-results', areaShops);
+            renderPicks('user-results', userShops);
+        });
+    }
+    renderPicks('user-results', userShops);
+});
+document.getElementById('user-q').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('user-search-btn').click();
+});
+
+// Clear / Back / Create
+document.getElementById('clear-selected').addEventListener('click', () => {
+    selectedIds.clear(); updateBar();
+    renderPicks('manual-results', manualShops);
+    renderPicks('area-results', areaShops);
+    renderPicks('user-results', userShops);
+});
+document.getElementById('create-btn').addEventListener('click', openModal);
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+document.getElementById('step1-next').addEventListener('click', () => {
+    const name = document.getElementById('group-name-input').value.trim();
+    if (!name) { document.getElementById('group-name-input').focus(); return; }
+    pendingName = name;
+    document.getElementById('step2-title').textContent = 'Add Shops to "' + name + '"';
+    showStep(2);
+});
+document.getElementById('step2-back').addEventListener('click', () => showStep(1));
+document.getElementById('step2-create').addEventListener('click', async () => {
+    const btn = document.getElementById('step2-create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    const res = await fetch('/malls/api/groups', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name: pendingName, shopIds: Array.from(selectedIds) }),
+    });
+    const group = await res.json();
+    if (res.ok) {
+        setToken(group.id, group.editToken);
+        closeModal();
+        window.location.href = '/malls/' + group.id;
+    } else {
+        btn.disabled = false; btn.textContent = 'Create Mall';
+        alert(group.error || 'Failed to create mall.');
+    }
+});
+
+// ── Page tabs ──────────────────────────────────────────────────────
+let rankingsLoaded = false;
+document.querySelectorAll('.sg-page-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.sg-page-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.ptab;
+        document.getElementById('ptab-all').style.display      = tab === 'all'      ? '' : 'none';
+        document.getElementById('ptab-rankings').style.display = tab === 'rankings' ? '' : 'none';
+        if (tab === 'rankings' && !rankingsLoaded) { rankingsLoaded = true; loadRankings(); }
+    });
+});
+
+// ── Rankings ────────────────────────────────────────────────────────
+let rankData = [], rankSortCol = 'overallScore', rankSortDir = -1;
+
+async function loadRankings() {
+    const res = await fetch('/malls/api/rankings');
+    document.getElementById('rankings-loading').style.display = 'none';
+    if (!res.ok) { document.getElementById('rankings-empty').style.display = ''; return; }
+    rankData = await res.json();
+    if (!rankData.length) { document.getElementById('rankings-empty').style.display = ''; return; }
+    renderRankings();
+}
+
+function sortRankings(col) {
+    // avgVsBest: lower = better, so default asc; everything else default desc
+    if (rankSortCol === col) rankSortDir *= -1;
+    else { rankSortCol = col; rankSortDir = col === 'avgVsBest' ? 1 : -1; }
+    renderRankings();
+}
+
+function renderRankings() {
+    const medals = ['🥇', '🥈', '🥉'];
+
+    // rankData is already sorted by overallScore desc (server order = "true rank")
+    const sorted = [...rankData].sort((a, b) => {
+        if (rankSortCol === 'rank') {
+            return (rankData.indexOf(a) - rankData.indexOf(b)) * rankSortDir;
+        }
+        if (rankSortCol === 'name') return a.name.localeCompare(b.name) * rankSortDir;
+        const nullFallback = rankSortDir > 0 ? Infinity : -Infinity;
+        const av = a[rankSortCol] ?? nullFallback;
+        const bv = b[rankSortCol] ?? nullFallback;
+        return (av - bv) * rankSortDir;
+    });
+
+    // Update header arrows + active col highlight
+    document.querySelectorAll('.sg-rank-th').forEach(th => th.classList.remove('sg-rank-active-col'));
+    document.querySelectorAll('.sg-rarr').forEach(el => {
+        const active = el.dataset.rcol === rankSortCol;
+        el.className = 'sg-rarr' + (active ? (rankSortDir === 1 ? ' asc' : ' desc') : '');
+        if (active) el.closest('th')?.classList.add('sg-rank-active-col');
+    });
+
+    const tbody = document.getElementById('rankings-body');
+    tbody.innerHTML = '';
+
+    sorted.forEach(r => {
+        const origRank = rankData.indexOf(r);  // 0-based position in score-sorted array
+        const rankCell = origRank < 3
+            ? `<span style="font-size:18px;">${medals[origRank]}</span>`
+            : `<span class="rk-dim" style="font-weight:600;">${origRank + 1}</span>`;
+
+        const iconHtml = r.iconUrl
+            ? `<img src="${esc(r.iconUrl)}" style="width:26px;height:26px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;flex-shrink:0;" onerror="this.style.display='none'" alt="">`
+            : `<span style="margin-right:6px;font-size:16px;">🏬</span>`;
+
+        // Avg Premium: ≤50% green, ≤200% yellow, >200% red (prices vary wildly)
+        const avgCell = r.avgVsBest != null
+            ? `<span class="${r.avgVsBest <= 50 ? 'rk-green' : r.avgVsBest <= 200 ? 'rk-yellow' : 'rk-red'}">${r.avgVsBest.toFixed(1)}%</span>`
+            : '<span class="rk-dim">—</span>';
+
+        // Price score: ≥80 green, ≥50 yellow, <50 red
+        const psCell = r.priceScore != null
+            ? `<span class="${r.priceScore >= 80 ? 'rk-green' : r.priceScore >= 50 ? 'rk-yellow' : 'rk-red'}">${r.priceScore}</span>`
+            : '<span class="rk-dim">—</span>';
+
+        // Overall score: colored bar-style
+        const osColor = r.overallScore >= 70 ? '#60a5fa' : r.overallScore >= 40 ? '#fbbf24' : '#aaa';
+        const osCell  = `<span class="rk-score" style="color:${osColor}">${r.overallScore}</span>`;
+
+        // Items-at-best: shown as "n / total"
+        const atBestCell = r.itemCount > 0
+            ? `${r.itemsAtBest} <span class="rk-dim">/ ${r.itemCount}</span>`
+            : '<span class="rk-dim">—</span>';
+
+        const tr = document.createElement('tr');
+        tr.onclick = () => window.location.href = '/malls/' + r.id;
+        tr.innerHTML = `
+            <td class="col-r">${rankCell}</td>
+            <td>
+                <div style="display:flex;align-items:center;">
+                    ${iconHtml}
+                    <div>
+                        <a href="/malls/${r.id}" onclick="event.stopPropagation()"
+                           style="color:#e0e0e0;font-weight:600;font-size:14px;text-decoration:none;">${esc(r.name)}</a>
+                        ${r.open ? '<span style="font-size:10px;color:#4ade80;margin-left:5px;">🔓</span>' : ''}
+                        ${getToken(r.id) ? '<span style="font-size:10px;color:#60a5fa;margin-left:5px;">✏</span>' : ''}
+                    </div>
+                </div>
+            </td>
+            <td class="col-r">${r.itemCount || '<span class="rk-dim">0</span>'}</td>
+            <td class="col-r">${r.shopCount || '<span class="rk-dim">0</span>'}</td>
+            <td class="col-r">${atBestCell}</td>
+            <td class="col-r">${avgCell}</td>
+            <td class="col-r">${psCell}</td>
+            <td class="col-r">${osCell}</td>`;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('rankings-table').style.display = '';
+}
+
+loadGroups();
+</script>
+{% endblock %}
