@@ -15,29 +15,51 @@ _http.headers.update({"User-Agent": "earthpol-web/1.0", "Accept": "application/j
 _ENV = os.environ.get("VERCEL_ENV", "development")   # "production" | "preview" | "development"
 BLOB_KEY = "shop_groups.json" if _ENV == "production" else f"shop_groups_{_ENV}.json"
 
+# Module-level URL cache: survives across requests on the same warm serverless instance,
+# saving the vb.list() discovery round-trip (~200–400 ms) on subsequent calls.
+_blob_url: str | None = None
+
 
 # ── Blob helpers ───────────────────────────────────────────────────
 
 def _load_groups():
+    global _blob_url
+    nc_headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+
+    # Fast path: try the cached URL directly (warm instance, saves vb.list call)
+    if _blob_url:
+        try:
+            res = _http.get(_blob_url, headers=nc_headers)
+            if res.status_code == 200:
+                return json.loads(res.content)
+        except Exception:
+            pass
+        _blob_url = None  # stale — fall through to discovery
+
+    # Slow path: discover URL via listing
     try:
         result = vb.list(options={"prefix": BLOB_KEY, "limit": "1"})
         blobs = (result or {}).get("blobs") or []
         if not blobs:
             return []
         url = blobs[0].get("downloadUrl") or blobs[0].get("url", "")
-        res = _http.get(url, headers={"Cache-Control": "no-cache", "Pragma": "no-cache"})
+        res = _http.get(url, headers=nc_headers)
         res.raise_for_status()
+        _blob_url = url  # cache for next call on this instance
         return json.loads(res.content)
     except Exception:
         return []
 
 
 def _save_groups(groups):
-    vb.put(
+    global _blob_url
+    result = vb.put(
         BLOB_KEY,
         json.dumps(groups).encode(),
         options={"allowOverwrite": "true", "addRandomSuffix": "false"},
     )
+    # Cache the URL returned by put so the next load skips vb.list()
+    _blob_url = result.get("url") or result.get("downloadUrl") or _blob_url
 
 
 def _pub(g):
