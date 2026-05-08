@@ -1,11 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify
 import requests as reqs
-from datetime import datetime, timedelta, UTC
-import vercel_blob as vb
-import json
+import json, time, os
 from codecs import decode
-from ..helpers import itemstack
+from pathlib import Path
 from threading import Thread
+from ..helpers import itemstack
 
 app = Blueprint("shops", __name__, template_folder="")
 
@@ -15,59 +14,84 @@ requests.headers.update({
     "Accept": "application/json",
 })
 
+DATA_DIR       = Path(os.environ.get("DATA_DIR", "data"))
+SHOP_FILE      = DATA_DIR / "shopdata.json"
+SHOP_TTL       = 300   # seconds before re-fetching from EarthPol API
 
-# --- type normalization (because backend hates you) ---
+_cache         = None
+_cache_ts      = 0.0
+
+
+# ── Type normalisation ─────────────────────────────────────────────
+
 def get_shop_type(n):
-    raw = str(n.get("type", ""))
-
-    # try clean extraction first
+    raw     = str(n.get("type", ""))
     cleaned = raw.split(".")[-1].split("@")[0].replace("Type", "").upper()
     if cleaned in ("SELLING", "BUYING"):
         return cleaned
-
-    # fallback paranoia
     if "SellingType" in raw:
         return "SELLING"
     if "BuyingType" in raw:
         return "BUYING"
-
     return "UNKNOWN"
 
 
-def update_shop_cache():
-    metadata = vb.head("shopdata.json")
-    uploaded = datetime.fromisoformat(metadata["uploadedAt"].replace("Z", "+00:00"))
+# ── Item parsing (mutates list in place) ───────────────────────────
 
-    if datetime.now(UTC) - uploaded > timedelta(minutes=5):
-        fresh_data = requests.get("https://api.earthpol.com/astra/shops").content
-        vb.put("shopdata.json", fresh_data, options={"allowOverwrite": "true"})
-
-
-def load_shops():
-    try:
-        metadata = vb.head("shopdata.json")
-        req = requests.get(metadata["downloadUrl"])
-        reqdata = json.loads(decode(req.content))
-
-    except BaseException as e:
-        if "not_found" in str(e):
-            req = requests.get("https://api.earthpol.com/astra/shops")
-            vb.put("shopdata.json", req.content, options={"allowOverwrite": "true"})
-            reqdata = json.loads(decode(req.content))
-        else:
-            raise
-
-    for n in reqdata:
-        n["item"] = itemstack.parse(n["item"])
-
-        # IMPORTANT: overwrite raw java garbage so templates stay unchanged
-        n["type"] = get_shop_type(n)
-
-        qty = n["item"]["amount"]
+def _process(shops):
+    for n in shops:
+        if isinstance(n.get("item"), str):
+            n["item"] = itemstack.parse(n["item"])
+        n["type"]       = get_shop_type(n)
+        qty             = n["item"]["amount"]
         n["unit_price"] = n["price"] / qty if qty else float("inf")
 
-    return reqdata
 
+# ── Cache + fetch ──────────────────────────────────────────────────
+
+def load_shops():
+    global _cache, _cache_ts
+    now = time.time()
+
+    # 1. Hot in-memory cache (free, no I/O)
+    if _cache is not None and now - _cache_ts < SHOP_TTL:
+        return _cache
+
+    # 2. Warm disk cache (avoid hitting EarthPol API if file is fresh)
+    try:
+        if SHOP_FILE.exists() and now - SHOP_FILE.stat().st_mtime < SHOP_TTL:
+            shops = json.loads(decode(SHOP_FILE.read_bytes()))
+            _process(shops)
+            _cache, _cache_ts = shops, now
+            return _cache
+    except Exception:
+        pass
+
+    # 3. Fetch fresh from EarthPol
+    raw = requests.get("https://api.earthpol.com/astra/shops").content
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    SHOP_FILE.write_bytes(raw)
+    shops = json.loads(decode(raw))
+    _process(shops)
+    _cache, _cache_ts = shops, now
+    return _cache
+
+
+def update_shop_cache():
+    """Background refresh: re-fetch only when disk file is stale."""
+    try:
+        if not SHOP_FILE.exists() or time.time() - SHOP_FILE.stat().st_mtime > SHOP_TTL:
+            raw = requests.get("https://api.earthpol.com/astra/shops").content
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            SHOP_FILE.write_bytes(raw)
+            # Invalidate in-memory cache so next request picks up fresh data
+            global _cache, _cache_ts
+            _cache, _cache_ts = None, 0.0
+    except Exception:
+        pass
+
+
+# ── Filtering ──────────────────────────────────────────────────────
 
 def filter_shops(reqdata, query, stock_filter, type_filter):
     if query:
@@ -86,6 +110,8 @@ def filter_shops(reqdata, query, stock_filter, type_filter):
     reqdata.sort(key=lambda n: n["unit_price"])
     return reqdata
 
+
+# ── Routes ─────────────────────────────────────────────────────────
 
 @app.route("/shops")
 def shops_page():
