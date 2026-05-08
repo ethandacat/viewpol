@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect
 import json, math, secrets, time
 import requests as reqs
 import vercel_blob as vb
 from ..shops.shops import load_shops
+from ..helpers import itemstack
 
 app = Blueprint("shop_groups", __name__, template_folder="")
 
@@ -30,7 +31,6 @@ def _save_groups(groups):
 
 
 def _pub(g):
-    """Strip editToken before returning to clients."""
     return {k: v for k, v in g.items() if k != "editToken"}
 
 
@@ -45,26 +45,48 @@ def _sanitize_shops(shops):
     return out
 
 
+def _normalize_type(raw):
+    raw = str(raw)
+    cleaned = raw.split(".")[-1].split("@")[0].replace("Type", "").upper()
+    if cleaned in ("SELLING", "BUYING"):
+        return cleaned
+    if "SELLING" in raw.upper():
+        return "SELLING"
+    if "BUYING" in raw.upper():
+        return "BUYING"
+    return "UNKNOWN"
+
+
 # ── Pages ──────────────────────────────────────────────────────────
 
+@app.route("/malls")
+def malls_page():
+    return render_template("malls.html")
+
+
+@app.route("/malls/<group_id>")
+def mall_page(group_id):
+    return render_template("mall.html", group_id=group_id)
+
+
+# Legacy redirects
 @app.route("/shop-groups")
-def shop_groups_page():
-    return render_template("shop_groups.html")
+def sg_redirect():
+    return redirect("/malls", 301)
 
-
-@app.route("/shop-groups/<group_id>")
-def shop_group_page(group_id):
-    return render_template("shop_group.html", group_id=group_id)
+@app.route("/shop-groups/<path:rest>")
+def sg_redirect_sub(rest):
+    return redirect("/malls/" + rest, 301)
 
 
 # ── Group CRUD ─────────────────────────────────────────────────────
 
-@app.route("/shop-groups/api/groups")
+@app.route("/malls/api/groups")
 def sg_list():
     return jsonify([_pub(g) for g in _load_groups()])
 
 
-@app.route("/shop-groups/api/groups", methods=["POST"])
+@app.route("/malls/api/groups", methods=["POST"])
 def sg_create():
     data = request.json or {}
     name = str(data.get("name", "")).strip()[:60]
@@ -80,10 +102,10 @@ def sg_create():
     groups = _load_groups()
     groups.insert(0, group)
     _save_groups(groups)
-    return jsonify(group), 201   # editToken included only on creation
+    return jsonify(group), 201
 
 
-@app.route("/shop-groups/api/groups/<group_id>")
+@app.route("/malls/api/groups/<group_id>")
 def sg_get(group_id):
     g = next((g for g in _load_groups() if g["id"] == group_id), None)
     if not g:
@@ -91,7 +113,7 @@ def sg_get(group_id):
     return jsonify(_pub(g))
 
 
-@app.route("/shop-groups/api/groups/<group_id>", methods=["PUT"])
+@app.route("/malls/api/groups/<group_id>", methods=["PUT"])
 def sg_update(group_id):
     data = request.json or {}
     groups = _load_groups()
@@ -108,7 +130,7 @@ def sg_update(group_id):
     return jsonify(_pub(groups[idx]))
 
 
-@app.route("/shop-groups/api/groups/<group_id>", methods=["DELETE"])
+@app.route("/malls/api/groups/<group_id>", methods=["DELETE"])
 def sg_delete(group_id):
     data = request.json or {}
     groups = _load_groups()
@@ -124,7 +146,7 @@ def sg_delete(group_id):
 
 # ── Shop data APIs ─────────────────────────────────────────────────
 
-@app.route("/shop-groups/api/by-ids")
+@app.route("/malls/api/by-ids")
 def sg_by_ids():
     ids_param = request.args.get("ids", "")
     if not ids_param:
@@ -134,7 +156,7 @@ def sg_by_ids():
     return jsonify(_sanitize_shops(result))
 
 
-@app.route("/shop-groups/api/area")
+@app.route("/malls/api/area")
 def sg_area():
     try:
         x1 = float(request.args["x1"]); z1 = float(request.args["z1"])
@@ -151,7 +173,33 @@ def sg_area():
     return jsonify(_sanitize_shops(result))
 
 
-@app.route("/shop-groups/api/market-stats")
+@app.route("/malls/api/user-shops")
+def sg_user_shops():
+    user = request.args.get("user", "").strip()
+    if not user:
+        return jsonify({"error": "user required"}), 400
+    # Resolve name → UUID via players API
+    p_res = _http.post("https://api.earthpol.com/astra/players", json={"query": [user]})
+    if p_res.status_code != 200 or not p_res.json():
+        return jsonify({"error": "Player not found"}), 404
+    player   = p_res.json()[0]
+    uuid     = player.get("uuid", user)
+    username = player.get("name", user)
+    # Fetch shops owned by this player
+    s_res = _http.post("https://api.earthpol.com/astra/shops", json={"query": [uuid]})
+    if s_res.status_code != 200:
+        return jsonify({"username": username, "shops": []})
+    raw = s_res.json()
+    shops = raw[0] if raw and isinstance(raw[0], list) else [s for s in raw if isinstance(s, dict)]
+    for s in shops:
+        s["item"] = itemstack.parse(s["item"])
+        s["type"] = _normalize_type(s.get("type", ""))
+        qty = (s["item"] or {}).get("amount") or 1
+        s["unit_price"] = s["price"] / qty if qty else None
+    return jsonify({"username": username, "shops": _sanitize_shops(shops)})
+
+
+@app.route("/malls/api/market-stats")
 def sg_market_stats():
     items_param = request.args.get("items", "")
     if not items_param:
