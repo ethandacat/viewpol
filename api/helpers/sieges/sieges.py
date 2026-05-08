@@ -18,7 +18,7 @@ def load_sieges():
 def sieges_page():
     data = load_sieges()
     sieges = sorted(
-        [_fill_points(s) for s in data.get("sieges", [])],
+        [_recalc_points(s) for s in data.get("sieges", [])],
         key=lambda s: not s.get("isActive", False),
     )
     active_count = data.get("activeSiegeCount", 0)
@@ -33,18 +33,28 @@ def sieges_page():
     )
 
 
-def _fill_points(siege):
-    att = siege.get("attackerPoints") or 0
-    dff = siege.get("defenderPoints") or 0
-    bal = siege.get("balance") or 0
-    zeros = (att == 0, dff == 0, bal == 0)
-    if sum(zeros) == 1:
-        if zeros[0]: att = dff + bal
-        elif zeros[1]: dff = att - bal
-        else: bal = att - dff
+def _recalc_points(siege):
+    """Always recompute scores from battle session events — never trust API values."""
+    att, dff = 0, 0
+    for bs in siege.get("battleSessions") or []:
+        for k in bs.get("kills", []):
+            killer_side = k["killer"]["side"]
+            victim_side = k["victim"]["side"]
+            netting = _opposite(victim_side) if killer_side.upper() == "NOBODY" else killer_side.capitalize()
+            pts = k.get("points", 0) or 0
+            if netting == "Attacker":
+                att += pts
+            else:
+                dff += pts
+        for bc in bs.get("bannerControl", []):
+            pts = bc.get("points", 0) or 0
+            if bc.get("awardingSide", "").capitalize() == "Attacker":
+                att += pts
+            else:
+                dff += pts
     siege["attackerPoints"] = att
     siege["defenderPoints"] = dff
-    siege["balance"]        = bal
+    siege["balance"]        = att - dff
     return siege
 
 
@@ -155,7 +165,7 @@ def siege_page(identifier):
         if siege is None:
             return "", 404
         return redirect(f"/sieges/{siege['uuid']}", 301)
-    siege = _fill_points(siege)
+    siege = _recalc_points(siege)
     battle_sessions = _process_sessions(siege.get("battleSessions") or [])
     chart_data      = _build_chart_data(siege)
     return render_template("siege.html", siege=siege, battle_sessions=battle_sessions, chart_data=chart_data)
