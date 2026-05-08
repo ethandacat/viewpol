@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-import json, time, os
+import json, time, os, threading
 import requests as reqs
 from pathlib import Path
 
@@ -8,15 +8,21 @@ app = Blueprint("server_status", __name__)
 _http = reqs.Session()
 _http.headers.update({"User-Agent": "earthpol-web/1.0", "Accept": "application/json"})
 
-DATA_DIR     = Path(os.environ.get("DATA_DIR", "data"))
-HISTORY_FILE = DATA_DIR / "server_history.json"
-MAX_ENTRIES  = 2016   # 7 days at 5-min intervals
-MC_API       = "https://api.mcsrvstat.us/3/play.earthpol.com"
+DATA_DIR      = Path(os.environ.get("DATA_DIR", "data"))
+HISTORY_FILE  = DATA_DIR / "server_history.json"
+POLL_INTERVAL = 10      # seconds between pings
+FLUSH_EVERY   = 6       # flush to disk every N polls (every ~60s)
+MAX_ENTRIES   = 60480   # 7 days at 10s intervals
+MC_API        = "https://api.mcsrvstat.us/3/play.earthpol.com"
+
+_lock    = threading.Lock()
+_history = []           # in-memory, loaded once at startup
+_dirty   = False
 
 
-# ── File helpers ───────────────────────────────────────────────────
+# ── Disk I/O ───────────────────────────────────────────────────────
 
-def _load_history():
+def _load_from_disk():
     try:
         return json.loads(HISTORY_FILE.read_bytes())
     except FileNotFoundError:
@@ -25,12 +31,14 @@ def _load_history():
         return []
 
 
-def _save_history(history):
+def _flush_to_disk():
+    with _lock:
+        snapshot = list(_history)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    HISTORY_FILE.write_text(json.dumps(history), encoding="utf-8")
+    HISTORY_FILE.write_text(json.dumps(snapshot), encoding="utf-8")
 
 
-# ── Fetch from mcsrvstat ───────────────────────────────────────────
+# ── Fetch ──────────────────────────────────────────────────────────
 
 def _fetch_status():
     r = _http.get(MC_API, timeout=8)
@@ -42,28 +50,43 @@ def _fetch_status():
     return {"online": online, "players": players, "max": maximum}
 
 
+# ── Background polling thread ──────────────────────────────────────
+
+def _poll_loop():
+    global _dirty
+    flush_counter = 0
+    while True:
+        try:
+            status = _fetch_status()
+            entry  = {"ts": int(time.time() * 1000), **status}
+            with _lock:
+                _history.append(entry)
+                if len(_history) > MAX_ENTRIES:
+                    del _history[:len(_history) - MAX_ENTRIES]
+                _dirty = True
+            flush_counter += 1
+            if flush_counter >= FLUSH_EVERY:
+                _flush_to_disk()
+                flush_counter = 0
+        except Exception:
+            pass
+        time.sleep(POLL_INTERVAL)
+
+
+# Load history from disk and start polling thread on import
+_history.extend(_load_from_disk())
+_thread = threading.Thread(target=_poll_loop, daemon=True)
+_thread.start()
+
+
 # ── Routes ─────────────────────────────────────────────────────────
-
-@app.route("/api/server-status/record")
-def record():
-    """Fetch current status and append to history (called by cron)."""
-    try:
-        status = _fetch_status()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
-
-    entry   = {"ts": int(time.time() * 1000), **status}
-    history = _load_history()
-    history.append(entry)
-    if len(history) > MAX_ENTRIES:
-        history = history[-MAX_ENTRIES:]
-    _save_history(history)
-    return jsonify(entry)
-
 
 @app.route("/api/server-status/current")
 def current():
-    """Live proxy to mcsrvstat — no storage."""
+    """Latest recorded entry, or live fetch if history is empty."""
+    with _lock:
+        if _history:
+            return jsonify(_history[-1])
     try:
         return jsonify(_fetch_status())
     except Exception:
@@ -72,5 +95,22 @@ def current():
 
 @app.route("/api/server-status/history")
 def history():
-    """Return full stored history array."""
-    return jsonify(_load_history())
+    with _lock:
+        data = list(_history)
+    return jsonify(data)
+
+
+@app.route("/api/server-status/record")
+def record():
+    """Manual trigger — useful for testing."""
+    try:
+        status = _fetch_status()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+    entry = {"ts": int(time.time() * 1000), **status}
+    with _lock:
+        _history.append(entry)
+        if len(_history) > MAX_ENTRIES:
+            del _history[:len(_history) - MAX_ENTRIES]
+    _flush_to_disk()
+    return jsonify(entry)
