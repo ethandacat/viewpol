@@ -362,8 +362,9 @@ def sg_rankings():
                     items_at_best += 1
 
         avg_vs_best = round(sum(vs_bests) / len(vs_bests), 2) if vs_bests else None
-        # price_score: 100 = matches market best everywhere, 0 = 100%+ above market
-        price_score = round(max(0.0, 100.0 - min(float(avg_vs_best), 100.0)), 1) \
+        # price_score: EarthPol prices vary wildly, so use sqrt compression.
+        # 0% above → 100,  50% → ~85,  200% → ~72,  500% → ~60,  2000% → ~45
+        price_score = round(max(0.0, 100.0 - 100.0 * math.sqrt(float(avg_vs_best)) / (math.sqrt(float(avg_vs_best)) + 60.0)), 1) \
                       if avg_vs_best is not None else None
 
         results.append({

@@ -516,9 +516,9 @@ function renderRankings() {
             ? `<img src="${esc(r.iconUrl)}" style="width:26px;height:26px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;flex-shrink:0;" onerror="this.style.display='none'" alt="">`
             : `<span style="margin-right:6px;font-size:16px;">🏬</span>`;
 
-        // Avg Premium: ≤5% green, ≤25% yellow, >25% red
+        // Avg Premium: ≤50% green, ≤200% yellow, >200% red (prices vary wildly)
         const avgCell = r.avgVsBest != null
-            ? `<span class="${r.avgVsBest <= 5 ? 'rk-green' : r.avgVsBest <= 25 ? 'rk-yellow' : 'rk-red'}">${r.avgVsBest.toFixed(1)}%</span>`
+            ? `<span class="${r.avgVsBest <= 50 ? 'rk-green' : r.avgVsBest <= 200 ? 'rk-yellow' : 'rk-red'}">${r.avgVsBest.toFixed(1)}%</span>`
             : '<span class="rk-dim">—</span>';
 
         // Price score: ≥80 green, ≥50 yellow, <50 red
