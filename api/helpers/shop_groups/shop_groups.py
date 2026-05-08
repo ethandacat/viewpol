@@ -17,17 +17,24 @@ BLOB_KEY = "shop_groups.json"
 
 def _load_groups():
     try:
-        meta = vb.head(BLOB_KEY)
-        res = _http.get(meta["downloadUrl"])
-        return json.loads(res.content)
-    except Exception as e:
-        if "not_found" in str(e).lower():
+        result = vb.list(options={"prefix": BLOB_KEY, "limit": "1"})
+        blobs = (result or {}).get("blobs") or []
+        if not blobs:
             return []
-        raise
+        url = blobs[0].get("downloadUrl") or blobs[0].get("url", "")
+        res = _http.get(url, headers={"Cache-Control": "no-cache", "Pragma": "no-cache"})
+        res.raise_for_status()
+        return json.loads(res.content)
+    except Exception:
+        return []
 
 
 def _save_groups(groups):
-    vb.put(BLOB_KEY, json.dumps(groups).encode(), options={"allowOverwrite": "true"})
+    vb.put(
+        BLOB_KEY,
+        json.dumps(groups).encode(),
+        options={"allowOverwrite": "true", "addRandomSuffix": "false"},
+    )
 
 
 def _pub(g):
