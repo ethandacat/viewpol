@@ -7,10 +7,48 @@
     <button id="create-btn" class="sg-btn-primary">+ New Mall</button>
 </div>
 
-<div id="groups-loading" style="color:#555;font-style:italic;">Loading…</div>
-<div id="groups-grid" class="groups-grid" style="display:none;"></div>
-<div id="no-groups" style="display:none;text-align:center;color:#555;font-style:italic;padding:60px 0;">
-    No malls yet. Create one to start comparing shop prices!
+<div class="sg-page-tabs" style="margin-bottom:20px;">
+    <button class="sg-page-tab active" data-ptab="all">🏬 All Malls</button>
+    <button class="sg-page-tab" data-ptab="rankings">🏆 Rankings</button>
+</div>
+
+<div id="ptab-all">
+    <div id="groups-loading" style="color:#555;font-style:italic;">Loading…</div>
+    <div id="groups-grid" class="groups-grid" style="display:none;"></div>
+    <div id="no-groups" style="display:none;text-align:center;color:#555;font-style:italic;padding:60px 0;">
+        No malls yet. Create one to start comparing shop prices!
+    </div>
+</div>
+
+<!-- Rankings pane -->
+<div id="ptab-rankings" style="display:none;">
+    <p style="font-size:12px;color:#555;margin:0 0 18px;line-height:1.7;">
+        Ranked by <b style="color:#888;">Overall Score</b> (0–100) — equal blend of
+        <b style="color:#888;">Completeness</b> (unique items relative to the richest mall) and
+        <b style="color:#888;">Price Score</b> (how close to the server-wide market best price).
+        Click any column header to re-sort.
+    </p>
+    <div id="rankings-loading" style="color:#555;font-style:italic;">Loading rankings…</div>
+    <div style="overflow-x:auto;">
+    <table id="rankings-table" class="sg-rank-table" style="display:none;">
+        <thead>
+            <tr>
+                <th class="sg-rank-th" onclick="sortRankings('rank')" style="width:40px;"># <span class="sg-rarr" data-rcol="rank"></span></th>
+                <th class="sg-rank-th" onclick="sortRankings('name')">Mall <span class="sg-rarr" data-rcol="name"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('itemCount')">Items <span class="sg-rarr" data-rcol="itemCount"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('shopCount')">Shops <span class="sg-rarr" data-rcol="shopCount"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('itemsAtBest')">At Best Price <span class="sg-rarr" data-rcol="itemsAtBest"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('avgVsBest')">Avg Premium <span class="sg-rarr" data-rcol="avgVsBest"></span></th>
+                <th class="sg-rank-th col-r" onclick="sortRankings('priceScore')">Price Score <span class="sg-rarr" data-rcol="priceScore"></span></th>
+                <th class="sg-rank-th col-r sg-rank-active-col" onclick="sortRankings('overallScore')">Overall <span class="sg-rarr desc" data-rcol="overallScore"></span></th>
+            </tr>
+        </thead>
+        <tbody id="rankings-body"></tbody>
+    </table>
+    </div>
+    <div id="rankings-empty" style="display:none;color:#555;font-style:italic;padding:40px 0;text-align:center;">
+        No malls to rank yet.
+    </div>
 </div>
 
 <!-- Create modal -->
@@ -145,6 +183,31 @@
 
 #selected-bar { margin-top: 14px; padding: 8px 12px; background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; font-size: 13px; color: #aaa; display: flex; align-items: center; }
 #selected-count { font-weight: 700; color: #60a5fa; }
+
+/* ─── Page tabs ──────────────────────────────────────────────── */
+.sg-page-tabs { display: flex; gap: 8px; }
+.sg-page-tab { background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; color: #777; padding: 8px 18px; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.sg-page-tab:hover:not(.active) { color: #aaa; background: #1d1d1d; }
+.sg-page-tab.active { background: #1e293b; border-color: #1e3a5f; color: #60a5fa; }
+
+/* ─── Rankings table ─────────────────────────────────────────── */
+.sg-rank-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+.sg-rank-th { background: #181818; border-bottom: 1px solid #252525; padding: 10px 12px; text-align: left; color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.12s; }
+.sg-rank-th:hover { color: #aaa; }
+.sg-rank-th.col-r { text-align: right; }
+.sg-rank-th.sg-rank-active-col { color: #60a5fa; }
+.sg-rank-table tbody tr { border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background 0.1s; }
+.sg-rank-table tbody tr:hover { background: #1c1c1c; }
+.sg-rank-table td { padding: 10px 12px; color: #ccc; vertical-align: middle; }
+.sg-rank-table td.col-r { text-align: right; }
+.sg-rarr::after { content: ''; }
+.sg-rarr.asc::after  { content: ' ↑'; color: #60a5fa; }
+.sg-rarr.desc::after { content: ' ↓'; color: #60a5fa; }
+.rk-green  { color: #4ade80; font-weight: 600; }
+.rk-yellow { color: #fbbf24; font-weight: 600; }
+.rk-red    { color: #f87171; font-weight: 600; }
+.rk-dim    { color: #444; }
+.rk-score  { font-size: 15px; font-weight: 700; }
 </style>
 
 <script>
@@ -384,6 +447,120 @@ document.getElementById('step2-create').addEventListener('click', async () => {
         alert(group.error || 'Failed to create mall.');
     }
 });
+
+// ── Page tabs ──────────────────────────────────────────────────────
+let rankingsLoaded = false;
+document.querySelectorAll('.sg-page-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.sg-page-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.ptab;
+        document.getElementById('ptab-all').style.display      = tab === 'all'      ? '' : 'none';
+        document.getElementById('ptab-rankings').style.display = tab === 'rankings' ? '' : 'none';
+        if (tab === 'rankings' && !rankingsLoaded) { rankingsLoaded = true; loadRankings(); }
+    });
+});
+
+// ── Rankings ────────────────────────────────────────────────────────
+let rankData = [], rankSortCol = 'overallScore', rankSortDir = -1;
+
+async function loadRankings() {
+    const res = await fetch('/malls/api/rankings');
+    document.getElementById('rankings-loading').style.display = 'none';
+    if (!res.ok) { document.getElementById('rankings-empty').style.display = ''; return; }
+    rankData = await res.json();
+    if (!rankData.length) { document.getElementById('rankings-empty').style.display = ''; return; }
+    renderRankings();
+}
+
+function sortRankings(col) {
+    // avgVsBest: lower = better, so default asc; everything else default desc
+    if (rankSortCol === col) rankSortDir *= -1;
+    else { rankSortCol = col; rankSortDir = col === 'avgVsBest' ? 1 : -1; }
+    renderRankings();
+}
+
+function renderRankings() {
+    const medals = ['🥇', '🥈', '🥉'];
+
+    // rankData is already sorted by overallScore desc (server order = "true rank")
+    const sorted = [...rankData].sort((a, b) => {
+        if (rankSortCol === 'rank') {
+            return (rankData.indexOf(a) - rankData.indexOf(b)) * rankSortDir;
+        }
+        if (rankSortCol === 'name') return a.name.localeCompare(b.name) * rankSortDir;
+        const nullFallback = rankSortDir > 0 ? Infinity : -Infinity;
+        const av = a[rankSortCol] ?? nullFallback;
+        const bv = b[rankSortCol] ?? nullFallback;
+        return (av - bv) * rankSortDir;
+    });
+
+    // Update header arrows + active col highlight
+    document.querySelectorAll('.sg-rank-th').forEach(th => th.classList.remove('sg-rank-active-col'));
+    document.querySelectorAll('.sg-rarr').forEach(el => {
+        const active = el.dataset.rcol === rankSortCol;
+        el.className = 'sg-rarr' + (active ? (rankSortDir === 1 ? ' asc' : ' desc') : '');
+        if (active) el.closest('th')?.classList.add('sg-rank-active-col');
+    });
+
+    const tbody = document.getElementById('rankings-body');
+    tbody.innerHTML = '';
+
+    sorted.forEach(r => {
+        const origRank = rankData.indexOf(r);  // 0-based position in score-sorted array
+        const rankCell = origRank < 3
+            ? `<span style="font-size:18px;">${medals[origRank]}</span>`
+            : `<span class="rk-dim" style="font-weight:600;">${origRank + 1}</span>`;
+
+        const iconHtml = r.iconUrl
+            ? `<img src="${esc(r.iconUrl)}" style="width:26px;height:26px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:8px;flex-shrink:0;" onerror="this.style.display='none'" alt="">`
+            : `<span style="margin-right:6px;font-size:16px;">🏬</span>`;
+
+        // Avg Premium: ≤5% green, ≤25% yellow, >25% red
+        const avgCell = r.avgVsBest != null
+            ? `<span class="${r.avgVsBest <= 5 ? 'rk-green' : r.avgVsBest <= 25 ? 'rk-yellow' : 'rk-red'}">${r.avgVsBest.toFixed(1)}%</span>`
+            : '<span class="rk-dim">—</span>';
+
+        // Price score: ≥80 green, ≥50 yellow, <50 red
+        const psCell = r.priceScore != null
+            ? `<span class="${r.priceScore >= 80 ? 'rk-green' : r.priceScore >= 50 ? 'rk-yellow' : 'rk-red'}">${r.priceScore}</span>`
+            : '<span class="rk-dim">—</span>';
+
+        // Overall score: colored bar-style
+        const osColor = r.overallScore >= 70 ? '#60a5fa' : r.overallScore >= 40 ? '#fbbf24' : '#aaa';
+        const osCell  = `<span class="rk-score" style="color:${osColor}">${r.overallScore}</span>`;
+
+        // Items-at-best: shown as "n / total"
+        const atBestCell = r.itemCount > 0
+            ? `${r.itemsAtBest} <span class="rk-dim">/ ${r.itemCount}</span>`
+            : '<span class="rk-dim">—</span>';
+
+        const tr = document.createElement('tr');
+        tr.onclick = () => window.location.href = '/malls/' + r.id;
+        tr.innerHTML = `
+            <td class="col-r">${rankCell}</td>
+            <td>
+                <div style="display:flex;align-items:center;">
+                    ${iconHtml}
+                    <div>
+                        <a href="/malls/${r.id}" onclick="event.stopPropagation()"
+                           style="color:#e0e0e0;font-weight:600;font-size:14px;text-decoration:none;">${esc(r.name)}</a>
+                        ${r.open ? '<span style="font-size:10px;color:#4ade80;margin-left:5px;">🔓</span>' : ''}
+                        ${getToken(r.id) ? '<span style="font-size:10px;color:#60a5fa;margin-left:5px;">✏</span>' : ''}
+                    </div>
+                </div>
+            </td>
+            <td class="col-r">${r.itemCount || '<span class="rk-dim">0</span>'}</td>
+            <td class="col-r">${r.shopCount || '<span class="rk-dim">0</span>'}</td>
+            <td class="col-r">${atBestCell}</td>
+            <td class="col-r">${avgCell}</td>
+            <td class="col-r">${psCell}</td>
+            <td class="col-r">${osCell}</td>`;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('rankings-table').style.display = '';
+}
 
 loadGroups();
 </script>

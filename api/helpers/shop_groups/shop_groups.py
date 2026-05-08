@@ -274,12 +274,8 @@ def sg_user_shops():
     return jsonify({"username": username, "shops": _sanitize_shops(shops)})
 
 
-@app.route("/malls/api/market-stats")
-def sg_market_stats():
-    items_param = request.args.get("items", "")
-    if not items_param:
-        return jsonify({})
-    item_ids = {s.strip() for s in items_param.split(",") if s.strip()}
+def _compute_market_stats(item_ids):
+    """Return {item_id: {count, avg, min}} for SELLING shops across all shops."""
     buckets = {}
     for s in load_shops():
         item_id = (s.get("item") or {}).get("item", "")
@@ -301,4 +297,94 @@ def sg_market_stats():
             "avg":   round(v["total"] / v["count"], 4),
             "min":   round(v["min"], 4) if math.isfinite(v["min"]) else None,
         }
-    return jsonify(result)
+    return result
+
+
+@app.route("/malls/api/market-stats")
+def sg_market_stats():
+    items_param = request.args.get("items", "")
+    if not items_param:
+        return jsonify({})
+    item_ids = {s.strip() for s in items_param.split(",") if s.strip()}
+    return jsonify(_compute_market_stats(item_ids))
+
+
+@app.route("/malls/api/rankings")
+def sg_rankings():
+    """Rank all malls by completeness (unique items) × price competitiveness."""
+    groups = _load_groups()
+    if not groups:
+        return jsonify([])
+
+    shops_list = load_shops()
+    shops_by_id = {str(s.get("id", "")): s for s in shops_list}
+
+    # Gather all selling item IDs across every mall — one market pass for all
+    all_item_ids = set()
+    for g in groups:
+        for sid in g.get("shopIds", []):
+            s = shops_by_id.get(str(sid))
+            if s and s.get("type") == "SELLING":
+                item_id = (s.get("item") or {}).get("item", "")
+                if item_id:
+                    all_item_ids.add(item_id)
+
+    mkt = _compute_market_stats(all_item_ids) if all_item_ids else {}
+
+    results = []
+    for g in groups:
+        mall_shops = [shops_by_id[str(sid)] for sid in g.get("shopIds", []) if str(sid) in shops_by_id]
+        selling    = [s for s in mall_shops if s.get("type") == "SELLING"]
+
+        # Best price per item in this mall
+        item_best = {}
+        for s in selling:
+            item_id = (s.get("item") or {}).get("item", "")
+            if not item_id:
+                continue
+            up = s.get("unit_price")
+            if up is None or not math.isfinite(up) or up <= 0:
+                continue
+            if item_id not in item_best or up < item_best[item_id]:
+                item_best[item_id] = up
+
+        item_count = len(item_best)
+        shop_count = len(mall_shops)
+
+        # vs-market comparison
+        vs_bests, items_at_best = [], 0
+        for item_id, best_price in item_best.items():
+            m = mkt.get(item_id)
+            if m and m.get("min") and m["min"] > 0:
+                pct = (best_price - m["min"]) / m["min"] * 100
+                vs_bests.append(pct)
+                if pct <= 0.5:
+                    items_at_best += 1
+
+        avg_vs_best = round(sum(vs_bests) / len(vs_bests), 2) if vs_bests else None
+        # price_score: 100 = matches market best everywhere, 0 = 100%+ above market
+        price_score = round(max(0.0, 100.0 - min(float(avg_vs_best), 100.0)), 1) \
+                      if avg_vs_best is not None else None
+
+        results.append({
+            "id":          g["id"],
+            "name":        g["name"],
+            "iconUrl":     g.get("iconUrl"),
+            "open":        g.get("open", False),
+            "shopCount":   shop_count,
+            "itemCount":   item_count,
+            "itemsAtBest": items_at_best,
+            "avgVsBest":   avg_vs_best,
+            "priceScore":  price_score,
+            "overallScore": 0.0,
+        })
+
+    # Normalise completeness across malls, then blend 50/50 with price score
+    max_items = max((r["itemCount"] for r in results), default=1) or 1
+    for r in results:
+        comp_pct  = r["itemCount"] / max_items * 100
+        price_pct = r["priceScore"] if r["priceScore"] is not None else 0.0
+        r["overallScore"] = round((comp_pct + price_pct) / 2.0, 1)
+
+    results.sort(key=lambda x: (-x["overallScore"], -x["itemCount"]))
+    return jsonify(results)
