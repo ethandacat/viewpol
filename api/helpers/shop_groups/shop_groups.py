@@ -96,6 +96,8 @@ def sg_create():
         "id":        "sg_" + secrets.token_urlsafe(8),
         "name":      name,
         "shopIds":   list(data.get("shopIds", [])),
+        "open":      bool(data.get("open", False)),
+        "iconUrl":   None,
         "createdAt": int(time.time() * 1000),
         "editToken": secrets.token_urlsafe(16),
     }
@@ -126,6 +128,10 @@ def sg_update(group_id):
         groups[idx]["name"] = str(data["name"]).strip()[:60]
     if "shopIds" in data:
         groups[idx]["shopIds"] = list(data["shopIds"])
+    if "open" in data:
+        groups[idx]["open"] = bool(data["open"])
+    if "iconUrl" in data:
+        groups[idx]["iconUrl"] = str(data["iconUrl"]).strip()[:500] if data["iconUrl"] else None
     _save_groups(groups)
     return jsonify(_pub(groups[idx]))
 
@@ -145,6 +151,75 @@ def sg_delete(group_id):
 
 
 # ── Shop data APIs ─────────────────────────────────────────────────
+
+@app.route("/malls/api/groups/<group_id>/shops", methods=["PATCH"])
+def sg_patch_shops(group_id):
+    """Add shops (anyone if open) or full replace (owner only)."""
+    data = request.json or {}
+    groups = _load_groups()
+    idx = next((i for i, g in enumerate(groups) if g["id"] == group_id), None)
+    if idx is None:
+        return jsonify({"error": "not found"}), 404
+    g = groups[idx]
+    is_owner = data.get("editToken") == g.get("editToken")
+    if not is_owner and not g.get("open"):
+        return jsonify({"error": "forbidden"}), 403
+    if is_owner and "shopIds" in data:
+        # Full replace (dedup, preserve order)
+        seen = set()
+        clean = []
+        for id_ in data["shopIds"]:
+            s = str(id_)
+            if s not in seen:
+                seen.add(s)
+                clean.append(s)
+        g["shopIds"] = clean
+    elif "addIds" in data:
+        # Append only (used by open-contributors)
+        existing = list(g["shopIds"])
+        existing_set = set(existing)
+        for id_ in data["addIds"]:
+            s = str(id_)
+            if s not in existing_set:
+                existing.append(s)
+                existing_set.add(s)
+        g["shopIds"] = existing
+    _save_groups(groups)
+    return jsonify(_pub(g))
+
+
+@app.route("/malls/api/groups/<group_id>/icon", methods=["POST"])
+def sg_set_icon(group_id):
+    """Owner sets mall icon via file upload or URL."""
+    groups = _load_groups()
+    idx = next((i for i, g in enumerate(groups) if g["id"] == group_id), None)
+    if idx is None:
+        return jsonify({"error": "not found"}), 404
+    g = groups[idx]
+
+    is_multipart = request.content_type and "multipart" in request.content_type
+    token = request.form.get("editToken", "") if is_multipart else (request.json or {}).get("editToken", "")
+    if token != g.get("editToken"):
+        return jsonify({"error": "forbidden"}), 403
+
+    if is_multipart:
+        file = request.files.get("file")
+        if not file:
+            return jsonify({"error": "no file provided"}), 400
+        ct = file.content_type or "image/png"
+        key = f"mall_icons/{group_id}"
+        result = vb.put(key, file.read(), options={"allowOverwrite": "true", "contentType": ct})
+        icon_url = result.get("url") or result.get("downloadUrl", "")
+    else:
+        body = request.json or {}
+        icon_url = str(body.get("iconUrl", "")).strip()[:500]
+        if not icon_url:
+            return jsonify({"error": "iconUrl required"}), 400
+
+    groups[idx]["iconUrl"] = icon_url
+    _save_groups(groups)
+    return jsonify({"iconUrl": icon_url})
+
 
 @app.route("/malls/api/by-ids")
 def sg_by_ids():

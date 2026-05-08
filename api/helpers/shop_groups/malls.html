@@ -186,12 +186,21 @@ async function loadGroups() {
         const mine = !!getToken(g.id);
         const card = document.createElement('div');
         card.className = 'sg-group-card' + (mine ? ' mine' : '');
+        const iconHtml = g.iconUrl
+            ? `<img src="${esc(g.iconUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.outerHTML='<span style=\\'font-size:24px;\\'>🏬</span>'" alt="">`
+            : `<span style="font-size:24px;">🏬</span>`;
+        const openBadge = g.open ? '<span style="font-size:10px;color:#4ade80;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:5px;padding:1px 7px;">🔓 Open</span>' : '';
         card.innerHTML = `
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-                <div class="sg-group-name">🏬 ${esc(g.name)}</div>
-                ${mine ? '<span class="sg-owner-badge">✏ Yours</span>' : ''}
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="width:40px;height:40px;border-radius:8px;background:#1e1e1e;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${iconHtml}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+                        <div class="sg-group-name" style="word-break:break-word;">${esc(g.name)}</div>
+                        ${mine ? '<span class="sg-owner-badge">✏ Yours</span>' : ''}
+                    </div>
+                    <div class="sg-group-meta" style="margin-top:3px;">${g.shopIds.length} shop${g.shopIds.length !== 1 ? 's' : ''} · ${fmtAgo(g.createdAt)}${g.open ? ' · ' : ''}${openBadge}</div>
+                </div>
             </div>
-            <div class="sg-group-meta">${g.shopIds.length} shop${g.shopIds.length !== 1 ? 's' : ''} · ${fmtAgo(g.createdAt)}</div>
             <div class="sg-group-actions">
                 <a href="/malls/${g.id}" class="sg-btn-view">View →</a>
                 ${mine ? `<button class="sg-btn-danger" onclick="deleteMall('${g.id}', this)">Delete</button>` : ''}
