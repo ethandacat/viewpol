@@ -52,8 +52,12 @@
         }
         .navbar-links {
             display: flex;
-            gap: 2px;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
         }
+        .navbar-links::-webkit-scrollbar { display: none; }
         .navbar-links a {
             color: #888 !important;
             text-decoration: none !important;
@@ -62,10 +66,27 @@
             padding: 5px 11px;
             border-radius: 7px;
             transition: color 0.15s, background 0.15s;
+            white-space: nowrap;
         }
         .navbar-links a:hover {
             color: #e0e0e0 !important;
             background: #1c1c1c;
+        }
+        .nav-group {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .nav-group-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #3a3a3a;
+            text-transform: uppercase;
+            letter-spacing: 1.3px;
+            padding: 2px 6px 2px 3px;
+            flex-shrink: 0;
+            pointer-events: none;
+            user-select: none;
         }
 
         /* ─── Page wrapper ───────────── */
@@ -246,8 +267,9 @@
 
         @media (max-width: 768px) {
             .page-wrapper { padding: 20px 16px 120px; }
-            .navbar { padding: 0 16px; gap: 14px; }
+            .navbar { padding: 0 16px; gap: 10px; }
             .navbar-links a { padding: 5px 8px; font-size: 13px; }
+            .nav-group-label { display: none; }
             .search-bar input { width: 220px; }
             .filters {
                 flex-direction: column;
@@ -263,14 +285,25 @@
         <a href="/" class="navbar-brand">ViewPol</a>
         <div class="navbar-divider"></div>
         <div class="navbar-links">
-            <a href="/nations">🌍 Nations</a>
-            <a href="/towns">🏘️ Towns</a>
-            <a href="/players">👤 Players</a>
-            <a href="/shops">🏦 Shops</a>
-            <a href="/malls">🏬 Malls</a>
-            <a href="/items">📦 Items</a>
-            <a href="/sieges">⚔️ Sieges</a>
-            <a href="/kitpvp">🗡️ KitPvP</a>
+            <div class="nav-group">
+                <span class="nav-group-label">Political</span>
+                <a href="/nations">🌍 Nations</a>
+                <a href="/towns">🏘️ Towns</a>
+                <a href="/players">👤 Players</a>
+            </div>
+            <div class="navbar-divider"></div>
+            <div class="nav-group">
+                <span class="nav-group-label">Economy</span>
+                <a href="/shops">🏦 Shops</a>
+                <a href="/malls">🏬 Malls</a>
+                <a href="/items">📦 Items</a>
+            </div>
+            <div class="navbar-divider"></div>
+            <div class="nav-group">
+                <span class="nav-group-label">War</span>
+                <a href="/sieges">⚔️ Sieges</a>
+                <a href="/kitpvp">🗡️ KitPvP</a>
+            </div>
         </div>
     </nav>
     <div class="page-wrapper">
