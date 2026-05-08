@@ -23,6 +23,7 @@ from api.helpers.errors import errors
 app = Flask(__name__, static_folder = "assets")
 
 app.register_blueprint(extras.app)
+
 app.register_blueprint(index.app)
 app.register_blueprint(nation.app)
 app.register_blueprint(nations.app)
@@ -39,3 +40,7 @@ app.register_blueprint(skin.app)
 app.register_blueprint(town.app)
 app.register_blueprint(towns.app)
 app.register_blueprint(errors.app)
+
+
+def create_app():
+    return app
