@@ -102,6 +102,30 @@ def _process_sessions(raw_sessions):
     return out
 
 
+def _build_chart_data(siege):
+    """Cumulative attacker/defender points over time across all sessions."""
+    events = []
+    for bs in siege.get("battleSessions") or []:
+        for k in bs.get("kills", []):
+            killer_side = k["killer"]["side"]
+            victim_side = k["victim"]["side"]
+            netting = _opposite(victim_side) if killer_side.upper() == "NOBODY" else killer_side.capitalize()
+            events.append({"ts": k.get("timestamp", 0), "side": netting, "pts": k.get("points", 0)})
+        for bc in bs.get("bannerControl", []):
+            events.append({"ts": bc.get("timestamp", 0), "side": bc["awardingSide"].capitalize(), "pts": bc.get("points", 0)})
+
+    events.sort(key=lambda e: e["ts"])
+
+    att, deff = 0, 0
+    chart = []
+    for e in events:
+        if e["side"] == "Attacker": att += e["pts"]
+        else: deff += e["pts"]
+        chart.append({"ts": e["ts"], "attacker": att, "defender": deff})
+
+    return chart
+
+
 @app.route("/sieges/<name>")
 def siege_page(name):
     data = load_sieges()
@@ -113,4 +137,5 @@ def siege_page(name):
     if siege is None:
         return "", 404
     battle_sessions = _process_sessions(siege.get("battleSessions") or [])
-    return render_template("siege.html", siege=siege, battle_sessions=battle_sessions)
+    chart_data      = _build_chart_data(siege)
+    return render_template("siege.html", siege=siege, battle_sessions=battle_sessions, chart_data=chart_data)
