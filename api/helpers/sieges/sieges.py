@@ -17,7 +17,7 @@ def load_sieges():
 @app.route("/sieges")
 def sieges_page():
     data = load_sieges()
-    sieges = data.get("sieges", [])
+    sieges = [_fill_points(s) for s in data.get("sieges", [])]
     active_count = data.get("activeSiegeCount", 0)
     time_till = data.get("battleSessionTimeTill", 0)
     time_remaining = data.get("battleSessionTimeRemaining", 0)
@@ -28,6 +28,21 @@ def sieges_page():
         time_till=time_till,
         time_remaining=time_remaining,
     )
+
+
+def _fill_points(siege):
+    att = siege.get("attackerPoints") or 0
+    dff = siege.get("defenderPoints") or 0
+    bal = siege.get("balance") or 0
+    zeros = (att == 0, dff == 0, bal == 0)
+    if sum(zeros) == 1:
+        if zeros[0]: att = dff + bal
+        elif zeros[1]: dff = att - bal
+        else: bal = att - dff
+    siege["attackerPoints"] = att
+    siege["defenderPoints"] = dff
+    siege["balance"]        = bal
+    return siege
 
 
 def _opposite(side):
@@ -136,6 +151,7 @@ def siege_page(name):
     )
     if siege is None:
         return "", 404
+    siege = _fill_points(siege)
     battle_sessions = _process_sessions(siege.get("battleSessions") or [])
     chart_data      = _build_chart_data(siege)
     return render_template("siege.html", siege=siege, battle_sessions=battle_sessions, chart_data=chart_data)
