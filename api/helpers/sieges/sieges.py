@@ -17,7 +17,10 @@ def load_sieges():
 @app.route("/sieges")
 def sieges_page():
     data = load_sieges()
-    sieges = [_fill_points(s) for s in data.get("sieges", [])]
+    sieges = sorted(
+        [_fill_points(s) for s in data.get("sieges", [])],
+        key=lambda s: not s.get("isActive", False),
+    )
     active_count = data.get("activeSiegeCount", 0)
     time_till = data.get("battleSessionTimeTill", 0)
     time_remaining = data.get("battleSessionTimeRemaining", 0)
