@@ -19,7 +19,7 @@ def sieges_page():
     data = load_sieges()
     sieges = sorted(
         [_recalc_points(s) for s in data.get("sieges", [])],
-        key=lambda s: not s.get("isActive", False),
+        key=lambda s: (not s.get("isActive", False), -(s.get("endedAtMillis") or 0)),
     )
     active_count = sum(1 for s in sieges if s.get("isActive", False))
     time_till = data.get("battleSessionTimeTill", 0)
