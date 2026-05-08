@@ -41,7 +41,7 @@ const sentinel = document.getElementById('sentinel');
 
 const observer = new IntersectionObserver(
     e => { if (e[0].isIntersecting) loadMore(); },
-    { rootMargin: '400px' }
+    { rootMargin: '1200px' }
 );
 observer.observe(sentinel);
 
