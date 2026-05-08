@@ -32,18 +32,18 @@
 let shopQuery   = {{ query|tojson }};
 let stockFilter = {{ stock_filter|tojson }};
 let typeFilter  = {{ type_filter|tojson }};
-let shopPage    = 0;
-let shopLoading = false;
-let shopHasMore = true;
+let shopPage       = 0;
+let shopLoading    = false;
+let shopHasMore    = true;
+let sentinelInView = false;
 
 const grid     = document.getElementById('shop-grid');
 const sentinel = document.getElementById('sentinel');
 
-const observer = new IntersectionObserver(
-    e => { if (e[0].isIntersecting) loadMore(); },
+new IntersectionObserver(
+    e => { sentinelInView = e[0].isIntersecting; if (sentinelInView) loadMore(); },
     { rootMargin: '1200px' }
-);
-observer.observe(sentinel);
+).observe(sentinel);
 
 async function loadMore() {
     if (shopLoading || !shopHasMore) return;
@@ -56,13 +56,14 @@ async function loadMore() {
     grid.appendChild(frag);
     shopHasMore = data.has_more;
     shopLoading = false;
+    if (sentinelInView) loadMore();
 }
 
 async function reset() {
     shopPage    = 0;
     shopHasMore = true;
     grid.innerHTML = '';
-    await loadMore();
+    loadMore();
 }
 
 function titleCase(str) {
