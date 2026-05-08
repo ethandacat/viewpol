@@ -7,7 +7,8 @@
     <button id="create-btn" class="sg-btn-primary">+ New Group</button>
 </div>
 
-<div id="groups-grid" class="groups-grid"></div>
+<div id="groups-loading" style="color:#555;font-style:italic;">Loading…</div>
+<div id="groups-grid" class="groups-grid" style="display:none;"></div>
 <div id="no-groups" style="display:none;text-align:center;color:#555;font-style:italic;padding:60px 0;">
     No groups yet. Create one to start comparing shop prices!
 </div>
@@ -46,7 +47,7 @@
 
                 <!-- Manual -->
                 <div id="tab-manual" class="sg-tab-pane">
-                    <input id="manual-q" class="sg-input" placeholder="Search by item name..." style="margin-bottom:10px;">
+                    <input id="manual-q" class="sg-input" placeholder="Search by item name…" style="margin-bottom:10px;">
                     <div id="manual-results" class="sg-pick-list"></div>
                 </div>
 
@@ -64,7 +65,6 @@
                     <div id="area-results" class="sg-pick-list" style="margin-top:4px;"></div>
                 </div>
 
-                <!-- Selected bar -->
                 <div id="selected-bar">
                     <span id="selected-count">0</span> shops selected
                     <button class="sg-btn-ghost" id="clear-selected" style="margin-left:8px;">Clear</button>
@@ -80,59 +80,30 @@
 </div>
 
 <style>
-.groups-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 14px;
-}
-.sg-group-card {
-    background: #181818; border: 1px solid #252525; border-radius: 12px;
-    padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;
-    transition: border-color 0.15s, transform 0.15s;
-}
+.groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.sg-group-card { background: #181818; border: 1px solid #252525; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s, transform 0.15s; }
 .sg-group-card:hover { border-color: #333; transform: translateY(-2px); }
+.sg-group-card.mine { border-color: #1e3a5f55; }
 .sg-group-name { font-size: 16px; font-weight: 700; color: #f0f0f0; }
 .sg-group-meta { font-size: 12px; color: #555; }
-.sg-group-actions { display: flex; gap: 8px; margin-top: 4px; }
+.sg-group-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.sg-owner-badge { font-size: 10px; font-weight: 600; color: #60a5fa; background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.25); border-radius: 6px; padding: 1px 7px; align-self: flex-start; }
 
-.sg-btn-primary {
-    background: #2563eb; color: #fff; border: none; border-radius: 8px;
-    padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
-}
+.sg-btn-primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .sg-btn-primary:hover { background: #1d4ed8; }
-.sg-btn-secondary {
-    background: #252525; color: #ccc; border: 1px solid #333; border-radius: 8px;
-    padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
-}
+.sg-btn-primary:disabled { opacity: 0.5; cursor: default; }
+.sg-btn-secondary { background: #252525; color: #ccc; border: 1px solid #333; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
 .sg-btn-secondary:hover { background: #2a2a2a; }
 .sg-btn-ghost { background: none; color: #555; border: none; font-size: 12px; cursor: pointer; padding: 2px 6px; }
 .sg-btn-ghost:hover { color: #aaa; }
-.sg-btn-danger {
-    background: rgba(239,68,68,0.1); color: #f87171;
-    border: 1px solid rgba(239,68,68,0.25); border-radius: 8px;
-    padding: 6px 12px; font-size: 12px; cursor: pointer;
-}
+.sg-btn-danger { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
 .sg-btn-danger:hover { background: rgba(239,68,68,0.2); }
-.sg-btn-view {
-    background: #1e293b; color: #60a5fa; border: 1px solid #1e3a5f;
-    border-radius: 8px; padding: 6px 12px; font-size: 12px;
-    text-decoration: none; font-weight: 500;
-}
+.sg-btn-view { background: #1e293b; color: #60a5fa; border: 1px solid #1e3a5f; border-radius: 8px; padding: 6px 12px; font-size: 12px; text-decoration: none; font-weight: 500; }
 .sg-btn-view:hover { background: #1e3a5f; color: #93c5fd; }
 
-.sg-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-    display: flex; align-items: center; justify-content: center; z-index: 1000;
-}
-.sg-modal-box {
-    background: #161616; border: 1px solid #2a2a2a; border-radius: 14px;
-    width: min(580px, 95vw); max-height: 90vh; display: flex;
-    flex-direction: column; overflow: hidden;
-}
-.sg-modal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 18px 20px 0; flex-shrink: 0;
-}
+.sg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.sg-modal-box { background: #161616; border: 1px solid #2a2a2a; border-radius: 14px; width: min(580px, 95vw); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.sg-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; flex-shrink: 0; }
 .sg-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
 .sg-modal-close { background: none; border: none; color: #555; font-size: 18px; cursor: pointer; padding: 2px 6px; line-height: 1; }
 .sg-modal-close:hover { color: #aaa; }
@@ -140,12 +111,7 @@
 .sg-modal-footer { padding: 14px 20px; display: flex; justify-content: space-between; border-top: 1px solid #252525; flex-shrink: 0; }
 
 .sg-label { font-size: 11px; color: #666; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-.sg-input {
-    width: 100%; box-sizing: border-box; background: #1a1a1a;
-    border: 1px solid #2a2a2a; border-radius: 8px;
-    color: #e0e0e0; font-size: 14px; padding: 8px 12px;
-    outline: none; transition: border-color 0.15s;
-}
+.sg-input { width: 100%; box-sizing: border-box; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; color: #e0e0e0; font-size: 14px; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
 .sg-input:focus { border-color: #2563eb; }
 
 .sg-tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -153,11 +119,7 @@
 .sg-tab.active { background: #1e293b; border-color: #1e3a5f; color: #60a5fa; }
 
 .sg-pick-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
-.sg-pick-item {
-    display: flex; align-items: center; gap: 10px;
-    background: #1a1a1a; border: 1px solid #252525; border-radius: 8px;
-    padding: 8px 10px; cursor: pointer; transition: border-color 0.15s;
-}
+.sg-pick-item { display: flex; align-items: center; gap: 10px; background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: border-color 0.15s; }
 .sg-pick-item:hover { border-color: #333; }
 .sg-pick-item.selected { border-color: #2563eb55; background: #1e293b; }
 .sg-pick-img { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; flex-shrink: 0; }
@@ -170,22 +132,17 @@
 .sg-coord { width: 90px !important; }
 .sg-coord-arrow { color: #444; font-size: 16px; }
 
-#selected-bar {
-    margin-top: 14px; padding: 8px 12px;
-    background: #1a1a1a; border: 1px solid #252525; border-radius: 8px;
-    font-size: 13px; color: #aaa; display: flex; align-items: center;
-}
+#selected-bar { margin-top: 14px; padding: 8px 12px; background: #1a1a1a; border: 1px solid #252525; border-radius: 8px; font-size: 13px; color: #aaa; display: flex; align-items: center; }
 #selected-count { font-weight: 700; color: #60a5fa; }
 </style>
 
 <script>
-const SG_KEY = 'viewpol_shop_groups';
+const TOKEN_PREFIX = 'sg_tok_';
 
-function getGroups() {
-    try { return JSON.parse(localStorage.getItem(SG_KEY) || '[]'); } catch { return []; }
-}
-function saveGroups(g) { localStorage.setItem(SG_KEY, JSON.stringify(g)); }
-function makeId() { return 'sg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function getToken(id)   { return localStorage.getItem(TOKEN_PREFIX + id) || null; }
+function setToken(id, t){ localStorage.setItem(TOKEN_PREFIX + id, t); }
+function clearToken(id) { localStorage.removeItem(TOKEN_PREFIX + id); }
+
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtAgo(ms) {
     const s = (Date.now() - ms) / 1000;
@@ -198,48 +155,57 @@ function titleCase(s) { return s.toLowerCase().replace(/\w\S*/g, t => t[0].toUpp
 function getDisplayName(shop) {
     const itemId = (shop.item?.item || 'unknown').toLowerCase();
     const extra = shop.item?.meta?.['display-name']?.extra;
-    const rawName = extra?.[0]?.text || null;
-    return titleCase(rawName || itemId.replace(/_/g, ' '));
+    return titleCase((extra?.[0]?.text) || itemId.replace(/_/g, ' '));
 }
 function fmtUnitPrice(shop) {
     const up = shop.unit_price;
-    if (up && isFinite(up) && up > 0) return (Math.round(up * 100) / 100) + 'g/ea';
-    return Math.round(shop.price) + 'g';
+    return (up && isFinite(up) && up > 0) ? (Math.round(up * 100) / 100) + 'g/ea' : Math.round(shop.price) + 'g';
 }
 
 // ── Groups list ────────────────────────────────────────────────────
-function renderGroups() {
-    const groups = getGroups();
+async function loadGroups() {
+    const groups = await fetch('/shop-groups/api/groups').then(r => r.json());
+    document.getElementById('groups-loading').style.display = 'none';
     const grid = document.getElementById('groups-grid');
     const none = document.getElementById('no-groups');
-    if (!groups.length) { grid.innerHTML = ''; none.style.display = 'block'; return; }
-    none.style.display = 'none';
+    if (!groups.length) { none.style.display = 'block'; return; }
+    grid.style.display = '';
     grid.innerHTML = '';
     groups.forEach(g => {
+        const mine = !!getToken(g.id);
         const card = document.createElement('div');
-        card.className = 'sg-group-card';
+        card.className = 'sg-group-card' + (mine ? ' mine' : '');
         card.innerHTML = `
-            <div class="sg-group-name">🏦 ${esc(g.name)}</div>
-            <div class="sg-group-meta">${g.shopIds.length} shop${g.shopIds.length !== 1 ? 's' : ''} · Created ${fmtAgo(g.createdAt)}</div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                <div class="sg-group-name">🏦 ${esc(g.name)}</div>
+                ${mine ? '<span class="sg-owner-badge">✏ Yours</span>' : ''}
+            </div>
+            <div class="sg-group-meta">${g.shopIds.length} shop${g.shopIds.length !== 1 ? 's' : ''} · ${fmtAgo(g.createdAt)}</div>
             <div class="sg-group-actions">
                 <a href="/shop-groups/${g.id}" class="sg-btn-view">View →</a>
-                <button class="sg-btn-danger" onclick="deleteGroup('${g.id}')">Delete</button>
+                ${mine ? `<button class="sg-btn-danger" onclick="deleteGroup('${g.id}', this)">Delete</button>` : ''}
             </div>`;
         grid.appendChild(card);
     });
 }
 
-function deleteGroup(id) {
-    if (!confirm('Delete this group?')) return;
-    saveGroups(getGroups().filter(g => g.id !== id));
-    renderGroups();
+async function deleteGroup(id, btn) {
+    const token = getToken(id);
+    if (!token || !confirm('Delete this group?')) return;
+    btn.disabled = true;
+    const res = await fetch('/shop-groups/api/groups/' + id, {
+        method: 'DELETE',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ editToken: token }),
+    });
+    if (res.ok) { clearToken(id); loadGroups(); }
+    else { btn.disabled = false; alert('Could not delete group.'); }
 }
 
-// ── Modal state ────────────────────────────────────────────────────
+// ── Modal ──────────────────────────────────────────────────────────
 let pendingName = '';
 let selectedIds = new Set();
-let manualShops = [];
-let areaShops = [];
+let manualShops = [], areaShops = [];
 
 function openModal() {
     pendingName = ''; selectedIds = new Set(); manualShops = []; areaShops = [];
@@ -261,25 +227,24 @@ function updateBar() { document.getElementById('selected-count').textContent = s
 function toggleShop(id) {
     if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
     updateBar();
-    renderPickList('manual-results', manualShops);
-    renderPickList('area-results', areaShops);
+    renderPicks('manual-results', manualShops);
+    renderPicks('area-results', areaShops);
 }
 
-function renderPickList(containerId, shops) {
+function renderPicks(containerId, shops) {
     const el = document.getElementById(containerId);
     el.innerHTML = '';
     shops.forEach(s => {
         const itemId = (s.item?.item || 'unknown').toLowerCase();
         const name = getDisplayName(s);
         const loc = s.location ? `${Math.round(s.location.x)}, ${Math.round(s.location.z)}` : '';
-        const typeLabel = s.type === 'SELLING' ? 'Selling' : 'Buying';
         const div = document.createElement('div');
         div.className = 'sg-pick-item' + (selectedIds.has(s.id) ? ' selected' : '');
         div.innerHTML = `
             <img class="sg-pick-img" src="https://api.earthpol.com/textures/item/${esc(itemId)}.png" onerror="this.style.display='none'" alt="">
             <div class="sg-pick-info">
                 <div class="sg-pick-name">${esc(name)}</div>
-                <div class="sg-pick-sub">${typeLabel}${loc ? ' · ' + loc : ''}</div>
+                <div class="sg-pick-sub">${s.type === 'SELLING' ? 'Selling' : 'Buying'}${loc ? ' · ' + loc : ''}</div>
             </div>
             <div class="sg-pick-price">${fmtUnitPrice(s)}</div>`;
         div.addEventListener('click', () => toggleShop(s.id));
@@ -303,41 +268,35 @@ let manualTimer = null;
 document.getElementById('manual-q').addEventListener('input', function() {
     clearTimeout(manualTimer);
     const q = this.value.trim();
-    if (!q) { manualShops = []; renderPickList('manual-results', []); return; }
+    if (!q) { manualShops = []; renderPicks('manual-results', []); return; }
     manualTimer = setTimeout(async () => {
         const res = await fetch(`/shops/data?q=${encodeURIComponent(q.toLowerCase())}&page=1&stock_filter=show&type_filter=both`).then(r => r.json());
         manualShops = res.players || [];
-        renderPickList('manual-results', manualShops);
+        renderPicks('manual-results', manualShops);
     }, 300);
 });
 
 // Area search
 document.getElementById('area-search-btn').addEventListener('click', async () => {
-    const x1 = document.getElementById('ax1').value;
-    const z1 = document.getElementById('az1').value;
-    const x2 = document.getElementById('ax2').value;
-    const z2 = document.getElementById('az2').value;
-    if (!x1 || !z1 || !x2 || !z2) {
-        document.getElementById('area-status').textContent = 'Fill in all four coordinate fields.';
-        return;
-    }
+    const x1 = document.getElementById('ax1').value, z1 = document.getElementById('az1').value;
+    const x2 = document.getElementById('ax2').value, z2 = document.getElementById('az2').value;
+    if (!x1 || !z1 || !x2 || !z2) { document.getElementById('area-status').textContent = 'Fill in all four coordinate fields.'; return; }
     document.getElementById('area-status').textContent = 'Searching…';
-    const params = new URLSearchParams({ x1, z1, x2, z2 });
-    const res = await fetch('/shop-groups/api/area?' + params).then(r => r.json());
+    const res = await fetch('/shop-groups/api/area?' + new URLSearchParams({x1,z1,x2,z2})).then(r => r.json());
     areaShops = Array.isArray(res) ? res : [];
     document.getElementById('area-status').textContent = areaShops.length
-        ? areaShops.length + ' shops found in this area.'
+        ? areaShops.length + ' shops found.'
         : 'No shops found in this area.';
-    renderPickList('area-results', areaShops);
+    renderPicks('area-results', areaShops);
 });
 
 document.getElementById('clear-selected').addEventListener('click', () => {
     selectedIds.clear(); updateBar();
-    renderPickList('manual-results', manualShops);
-    renderPickList('area-results', areaShops);
+    renderPicks('manual-results', manualShops);
+    renderPicks('area-results', areaShops);
 });
 
-// Step navigation
+// Navigation
 document.getElementById('create-btn').addEventListener('click', openModal);
 document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
 document.getElementById('step1-next').addEventListener('click', () => {
@@ -348,15 +307,25 @@ document.getElementById('step1-next').addEventListener('click', () => {
     showStep(2);
 });
 document.getElementById('step2-back').addEventListener('click', () => showStep(1));
-document.getElementById('step2-create').addEventListener('click', () => {
-    const group = { id: makeId(), name: pendingName, shopIds: Array.from(selectedIds), createdAt: Date.now() };
-    const groups = getGroups();
-    groups.unshift(group);
-    saveGroups(groups);
-    closeModal();
-    window.location.href = '/shop-groups/' + group.id;
+document.getElementById('step2-create').addEventListener('click', async () => {
+    const btn = document.getElementById('step2-create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    const res = await fetch('/shop-groups/api/groups', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name: pendingName, shopIds: Array.from(selectedIds) }),
+    });
+    const group = await res.json();
+    if (res.ok) {
+        setToken(group.id, group.editToken);
+        closeModal();
+        window.location.href = '/shop-groups/' + group.id;
+    } else {
+        btn.disabled = false; btn.textContent = 'Create Group';
+        alert(group.error || 'Failed to create group.');
+    }
 });
 
-renderGroups();
+loadGroups();
 </script>
 {% endblock %}

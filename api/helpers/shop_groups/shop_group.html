@@ -6,9 +6,11 @@
 
 <div id="group-header" style="margin-bottom:24px;">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <h1 id="group-name" style="margin:0;"></h1>
-        <button id="rename-btn" class="sgg-btn-secondary" style="font-size:12px;padding:5px 10px;">✏ Rename</button>
-        <button id="delete-btn" class="sgg-btn-danger" style="font-size:12px;padding:5px 10px;">🗑 Delete</button>
+        <h1 id="group-name" style="margin:0;">Loading…</h1>
+        <div id="owner-actions" style="display:none;display:flex;gap:8px;">
+            <button id="rename-btn" class="sgg-btn-secondary" style="font-size:12px;padding:5px 10px;">✏ Rename</button>
+            <button id="delete-btn" class="sgg-btn-danger" style="font-size:12px;padding:5px 10px;">🗑 Delete</button>
+        </div>
     </div>
     <div id="group-meta" style="font-size:13px;color:#555;margin-top:6px;"></div>
 </div>
@@ -47,7 +49,7 @@
 <!-- vs Market tab -->
 <div id="tab-market" style="display:none;">
     <p style="font-size:13px;color:#666;margin-bottom:14px;">
-        Compare your group's selling prices against the full market average and best available price.
+        Compare this group's selling prices against the full market.
     </p>
     <button id="load-market-btn" class="sgg-btn-primary">Load Market Comparison</button>
     <div id="market-loading" style="display:none;color:#555;font-style:italic;margin-top:12px;">Fetching market data…</div>
@@ -117,10 +119,10 @@
 
 <script>
 const GROUP_ID = {{ group_id | tojson }};
-const SG_KEY = 'viewpol_shop_groups';
+const TOKEN_PREFIX = 'sg_tok_';
 
-function getGroups() { try { return JSON.parse(localStorage.getItem(SG_KEY) || '[]'); } catch { return []; } }
-function saveGroups(g) { localStorage.setItem(SG_KEY, JSON.stringify(g)); }
+function getToken(id) { return localStorage.getItem(TOKEN_PREFIX + id) || null; }
+function clearToken(id) { localStorage.removeItem(TOKEN_PREFIX + id); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function titleCase(s) { return s.toLowerCase().replace(/\w\S*/g, t => t[0].toUpperCase() + t.slice(1)); }
 function fmtAgo(ms) {
@@ -133,44 +135,65 @@ function fmtAgo(ms) {
 function getDisplayName(shop) {
     const itemId = (shop.item?.item || 'unknown').toLowerCase();
     const extra = shop.item?.meta?.['display-name']?.extra;
-    const rawName = extra?.[0]?.text || null;
-    return titleCase(rawName || itemId.replace(/_/g, ' '));
+    return titleCase((extra?.[0]?.text) || itemId.replace(/_/g, ' '));
 }
-function fmtPrice(n) { return n == null || !isFinite(n) ? '—' : (Math.round(n * 100) / 100) + 'g/ea'; }
+function fmtPrice(n) { return (n == null || !isFinite(n)) ? '—' : (Math.round(n * 100) / 100) + 'g/ea'; }
 
 // ── Load group ──────────────────────────────────────────────────────
-const groups = getGroups();
-let group = groups.find(g => g.id === GROUP_ID);
+let group = null;
+let allShops = [];
+let itemStats = {};
+let sortCol = 'best', sortDir = 1;
 
-if (!group) {
-    document.getElementById('group-name').textContent = 'Group not found';
-    document.getElementById('group-meta').textContent = 'This group does not exist or was deleted.';
-    document.getElementById('items-loading').style.display = 'none';
-    document.getElementById('shops-loading').style.display = 'none';
-} else {
+(async () => {
+    const res = await fetch('/shop-groups/api/groups/' + GROUP_ID);
+    if (!res.ok) {
+        document.getElementById('group-name').textContent = 'Group not found';
+        document.getElementById('group-meta').textContent = 'This group does not exist or was deleted.';
+        document.getElementById('items-loading').style.display = 'none';
+        document.getElementById('shops-loading').style.display = 'none';
+        return;
+    }
+    group = await res.json();
     document.getElementById('group-name').textContent = group.name;
     document.getElementById('group-meta').textContent =
         group.shopIds.length + ' shop' + (group.shopIds.length !== 1 ? 's' : '') +
         ' · Created ' + fmtAgo(group.createdAt);
-    loadShops();
-}
 
-// ── Actions ─────────────────────────────────────────────────────────
-document.getElementById('delete-btn').addEventListener('click', () => {
+    // Show edit controls if we own this group
+    const token = getToken(GROUP_ID);
+    if (token) document.getElementById('owner-actions').style.display = 'flex';
+
+    loadShops();
+})();
+
+// ── Owner actions ───────────────────────────────────────────────────
+document.getElementById('delete-btn').addEventListener('click', async () => {
     if (!group || !confirm('Delete "' + group.name + '"?')) return;
-    saveGroups(groups.filter(g => g.id !== GROUP_ID));
-    window.location.href = '/shop-groups';
+    const token = getToken(GROUP_ID);
+    const res = await fetch('/shop-groups/api/groups/' + GROUP_ID, {
+        method: 'DELETE',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ editToken: token }),
+    });
+    if (res.ok) { clearToken(GROUP_ID); window.location.href = '/shop-groups'; }
+    else alert('Could not delete group.');
 });
-document.getElementById('rename-btn').addEventListener('click', () => {
+
+document.getElementById('rename-btn').addEventListener('click', async () => {
     if (!group) return;
     const name = prompt('New name:', group.name);
     if (!name?.trim()) return;
-    const idx = groups.findIndex(g => g.id === GROUP_ID);
-    if (idx === -1) return;
-    groups[idx].name = name.trim();
-    saveGroups(groups);
-    group = groups[idx];
-    document.getElementById('group-name').textContent = name.trim();
+    const token = getToken(GROUP_ID);
+    const res = await fetch('/shop-groups/api/groups/' + GROUP_ID, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name: name.trim(), editToken: token }),
+    });
+    if (res.ok) {
+        group = await res.json();
+        document.getElementById('group-name').textContent = group.name;
+    } else alert('Could not rename group.');
 });
 
 // ── Tabs ─────────────────────────────────────────────────────────────
@@ -184,11 +207,7 @@ document.querySelectorAll('.sgg-tab').forEach(btn => {
     });
 });
 
-// ── Data ─────────────────────────────────────────────────────────────
-let allShops = [];
-let itemStats = {};
-let sortCol = 'best', sortDir = 1;
-
+// ── Shop data ─────────────────────────────────────────────────────────
 async function loadShops() {
     if (!group?.shopIds?.length) {
         ['items','shops'].forEach(t => {
@@ -213,9 +232,7 @@ function buildItemStats() {
         itemStats[id].types.add(s.type);
     }
     for (const k of Object.keys(itemStats)) {
-        const prices = itemStats[k].shops
-            .map(s => s.unit_price)
-            .filter(p => p != null && isFinite(p) && p > 0);
+        const prices = itemStats[k].shops.map(s => s.unit_price).filter(p => p != null && isFinite(p) && p > 0);
         itemStats[k].best = prices.length ? Math.min(...prices) : null;
         itemStats[k].avg  = prices.length ? prices.reduce((a,b) => a+b, 0) / prices.length : null;
         const t = itemStats[k].types;
@@ -232,17 +249,14 @@ function renderItemsTab() {
     document.getElementById('items-loading').style.display = 'none';
     const data = Object.values(itemStats);
     if (!data.length) { document.getElementById('items-empty').style.display = ''; return; }
-
     data.sort((a, b) => {
         const va = sortCol === 'shops' ? a.shops.length : (a[sortCol] ?? Infinity);
         const vb = sortCol === 'shops' ? b.shops.length : (b[sortCol] ?? Infinity);
         return (va - vb) * sortDir;
     });
-
     document.querySelectorAll('.sort-arr').forEach(el => {
         el.className = 'sort-arr' + (el.dataset.col === sortCol ? (sortDir === 1 ? ' asc' : ' desc') : '');
     });
-
     const tbody = document.getElementById('items-body');
     tbody.innerHTML = '';
     data.forEach(it => {
@@ -274,7 +288,6 @@ function renderShopsTab() {
         const itemId = (s.item?.item || 'unknown').toLowerCase();
         const loc = s.location ? `${Math.round(s.location.x)}, ${Math.round(s.location.z)}` : '';
         const badge = s.type === 'SELLING' ? '<span class="badge-sell">Selling</span>' : '<span class="badge-buy">Buying</span>';
-        const price = fmtPrice(s.unit_price);
         const div = document.createElement('div');
         div.className = 'sgg-shop-row';
         div.innerHTML = `
@@ -283,14 +296,14 @@ function renderShopsTab() {
                 <div class="sgg-shop-row-name">${esc(name)}</div>
                 <div class="sgg-shop-row-sub">${badge} · ${esc(loc)}</div>
             </div>
-            <div class="sgg-shop-row-price">${price}</div>
+            <div class="sgg-shop-row-price">${fmtPrice(s.unit_price)}</div>
             <a href="/shops/${s.id}" class="sgg-shop-link">View →</a>`;
         list.appendChild(div);
     });
     list.style.display = '';
 }
 
-// ── vs Market ──────────────────────────────────────────────────────
+// ── vs Market ────────────────────────────────────────────────────────
 document.getElementById('load-market-btn').addEventListener('click', async () => {
     const sellingItems = Object.keys(itemStats).filter(k => itemStats[k].type !== 'BUYING');
     if (!sellingItems.length) {
@@ -300,12 +313,8 @@ document.getElementById('load-market-btn').addEventListener('click', async () =>
     }
     document.getElementById('load-market-btn').style.display = 'none';
     document.getElementById('market-loading').style.display = '';
-
-    const params = new URLSearchParams({ items: sellingItems.join(',') });
-    const mkt = await fetch('/shop-groups/api/market-stats?' + params).then(r => r.json());
-
+    const mkt = await fetch('/shop-groups/api/market-stats?items=' + sellingItems.join(',')).then(r => r.json());
     document.getElementById('market-loading').style.display = 'none';
-
     const tbody = document.getElementById('market-body');
     tbody.innerHTML = '';
     sellingItems.forEach(itemId => {
@@ -319,7 +328,7 @@ document.getElementById('load-market-btn').addEventListener('click', async () =>
                 ? `<span class="vs-better">${sign}${pct.toFixed(1)}% cheaper ✓</span>`
                 : pct > 1
                 ? `<span class="vs-worse">${sign}${pct.toFixed(1)}% pricier</span>`
-                : '<span class="vs-same">~same</span>';
+                : '<span class="vs-same">~same as market</span>';
         }
         const tr = document.createElement('tr');
         tr.innerHTML = `

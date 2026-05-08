@@ -1,12 +1,40 @@
 from flask import Blueprint, render_template, request, jsonify
-import math
+import json, math, secrets, time
+import requests as reqs
+import vercel_blob as vb
 from ..shops.shops import load_shops
 
 app = Blueprint("shop_groups", __name__, template_folder="")
 
+_http = reqs.Session()
+_http.headers.update({"User-Agent": "earthpol-web/1.0", "Accept": "application/json"})
 
-def _sanitize(shops):
-    """Replace non-JSON-safe floats and return a clean list."""
+BLOB_KEY = "shop_groups.json"
+
+
+# ── Blob helpers ───────────────────────────────────────────────────
+
+def _load_groups():
+    try:
+        meta = vb.head(BLOB_KEY)
+        res = _http.get(meta["downloadUrl"])
+        return json.loads(res.content)
+    except Exception as e:
+        if "not_found" in str(e).lower():
+            return []
+        raise
+
+
+def _save_groups(groups):
+    vb.put(BLOB_KEY, json.dumps(groups).encode(), options={"allowOverwrite": "true"})
+
+
+def _pub(g):
+    """Strip editToken before returning to clients."""
+    return {k: v for k, v in g.items() if k != "editToken"}
+
+
+def _sanitize_shops(shops):
     out = []
     for s in shops:
         s = dict(s)
@@ -16,6 +44,8 @@ def _sanitize(shops):
         out.append(s)
     return out
 
+
+# ── Pages ──────────────────────────────────────────────────────────
 
 @app.route("/shop-groups")
 def shop_groups_page():
@@ -27,6 +57,73 @@ def shop_group_page(group_id):
     return render_template("shop_group.html", group_id=group_id)
 
 
+# ── Group CRUD ─────────────────────────────────────────────────────
+
+@app.route("/shop-groups/api/groups")
+def sg_list():
+    return jsonify([_pub(g) for g in _load_groups()])
+
+
+@app.route("/shop-groups/api/groups", methods=["POST"])
+def sg_create():
+    data = request.json or {}
+    name = str(data.get("name", "")).strip()[:60]
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    group = {
+        "id":        "sg_" + secrets.token_urlsafe(8),
+        "name":      name,
+        "shopIds":   list(data.get("shopIds", [])),
+        "createdAt": int(time.time() * 1000),
+        "editToken": secrets.token_urlsafe(16),
+    }
+    groups = _load_groups()
+    groups.insert(0, group)
+    _save_groups(groups)
+    return jsonify(group), 201   # editToken included only on creation
+
+
+@app.route("/shop-groups/api/groups/<group_id>")
+def sg_get(group_id):
+    g = next((g for g in _load_groups() if g["id"] == group_id), None)
+    if not g:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(_pub(g))
+
+
+@app.route("/shop-groups/api/groups/<group_id>", methods=["PUT"])
+def sg_update(group_id):
+    data = request.json or {}
+    groups = _load_groups()
+    idx = next((i for i, g in enumerate(groups) if g["id"] == group_id), None)
+    if idx is None:
+        return jsonify({"error": "not found"}), 404
+    if groups[idx].get("editToken") != data.get("editToken"):
+        return jsonify({"error": "forbidden"}), 403
+    if "name" in data:
+        groups[idx]["name"] = str(data["name"]).strip()[:60]
+    if "shopIds" in data:
+        groups[idx]["shopIds"] = list(data["shopIds"])
+    _save_groups(groups)
+    return jsonify(_pub(groups[idx]))
+
+
+@app.route("/shop-groups/api/groups/<group_id>", methods=["DELETE"])
+def sg_delete(group_id):
+    data = request.json or {}
+    groups = _load_groups()
+    idx = next((i for i, g in enumerate(groups) if g["id"] == group_id), None)
+    if idx is None:
+        return jsonify({"error": "not found"}), 404
+    if groups[idx].get("editToken") != data.get("editToken"):
+        return jsonify({"error": "forbidden"}), 403
+    groups.pop(idx)
+    _save_groups(groups)
+    return "", 204
+
+
+# ── Shop data APIs ─────────────────────────────────────────────────
+
 @app.route("/shop-groups/api/by-ids")
 def sg_by_ids():
     ids_param = request.args.get("ids", "")
@@ -34,16 +131,14 @@ def sg_by_ids():
         return jsonify([])
     ids = {s.strip() for s in ids_param.split(",") if s.strip()}
     result = [s for s in load_shops() if str(s.get("id", "")) in ids]
-    return jsonify(_sanitize(result))
+    return jsonify(_sanitize_shops(result))
 
 
 @app.route("/shop-groups/api/area")
 def sg_area():
     try:
-        x1 = float(request.args["x1"])
-        z1 = float(request.args["z1"])
-        x2 = float(request.args["x2"])
-        z2 = float(request.args["z2"])
+        x1 = float(request.args["x1"]); z1 = float(request.args["z1"])
+        x2 = float(request.args["x2"]); z2 = float(request.args["z2"])
     except (KeyError, ValueError):
         return jsonify({"error": "x1, z1, x2, z2 required"}), 400
     xmin, xmax = min(x1, x2), max(x1, x2)
@@ -51,11 +146,9 @@ def sg_area():
     result = []
     for s in load_shops():
         loc = s.get("location") or {}
-        x = loc.get("x") or 0
-        z = loc.get("z") or 0
-        if xmin <= x <= xmax and zmin <= z <= zmax:
+        if xmin <= (loc.get("x") or 0) <= xmax and zmin <= (loc.get("z") or 0) <= zmax:
             result.append(s)
-    return jsonify(_sanitize(result))
+    return jsonify(_sanitize_shops(result))
 
 
 @app.route("/shop-groups/api/market-stats")
