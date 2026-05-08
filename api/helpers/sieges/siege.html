@@ -17,7 +17,8 @@
     <div class="faction-box attacker">
         <div class="faction-role">⚔️ Attacker</div>
         <img class="faction-flag" src="https://cdn.earthpol.com/nations/{{ siege.attacker | replace(' ', '_') }}.png"
-             onerror="this.src='https://cdn.earthpol.com/towns/{{ siege.attacker | replace(' ', '_') }}.png';this.onerror=function(){this.style.display='none'};"
+             data-name="{{ siege.attacker }}" data-town="{{ siege.attacker | replace(' ', '_') }}"
+             onerror="if(this.dataset.tried){this.onerror=null;this.src=generateFlagSVG(this.dataset.name);}else{this.dataset.tried=1;this.src='https://cdn.earthpol.com/towns/'+this.dataset.town+'.png';}"
              alt="">
         <div class="faction-name">{{ siege.attacker }}</div>
         <div class="faction-pts">{{ siege.attackerPoints }} <span>pts</span></div>
@@ -38,7 +39,8 @@
     <div class="faction-box defender">
         <div class="faction-role">🛡️ Defender</div>
         <img class="faction-flag" src="https://cdn.earthpol.com/nations/{{ siege.defender | replace(' ', '_') }}.png"
-             onerror="this.src='https://cdn.earthpol.com/towns/{{ siege.defender | replace(' ', '_') }}.png';this.onerror=function(){this.style.display='none'};"
+             data-name="{{ siege.defender }}" data-town="{{ siege.defender | replace(' ', '_') }}"
+             onerror="if(this.dataset.tried){this.onerror=null;this.src=generateFlagSVG(this.dataset.name);}else{this.dataset.tried=1;this.src='https://cdn.earthpol.com/towns/'+this.dataset.town+'.png';}"
              alt="">
         <div class="faction-name">{{ siege.defender }}</div>
         <div class="faction-pts">{{ siege.defenderPoints }} <span>pts</span></div>

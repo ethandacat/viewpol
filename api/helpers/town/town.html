@@ -9,12 +9,12 @@
         <img class="header-flag"
              src="https://cdn.earthpol.com/towns/{{ data.name.replace(' ', '_') }}.png"
              alt="{{ data.name }} flag"
-             onerror="this.onerror=null;this.style.display='none';">
+             onerror="this.onerror=null;this.src=generateFlagSVG('{{ data.name }}');">
         {% if data.nation and data.nation.name %}
         <img class="header-flag"
              src="https://cdn.earthpol.com/nations/{{ data.nation.name.replace(' ', '_') }}.png"
              alt="{{ data.nation.name }} flag"
-             onerror="this.onerror=null;this.style.display='none';">
+             onerror="this.onerror=null;this.src=generateFlagSVG('{{ data.nation.name }}');">
         {% endif %}
     </div>
     <h1>{{ data.name }}</h1>
