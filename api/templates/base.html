@@ -156,6 +156,7 @@
             align-items: center;
             gap: 8px;
             transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+            cursor: pointer;
         }
         .player-card:hover {
             transform: translateY(-3px);
@@ -310,6 +311,16 @@
         {% block content %}{% endblock %}
     </div>
     <script>
+    /* Make entire card clickable — .player-card and .sg-group-card both
+       contain an <a href> inside; clicking anywhere outside that link
+       navigates to its href. Clicks on <a> / <button> children still work normally. */
+    document.addEventListener('click', function (e) {
+        const card = e.target.closest('.player-card, .sg-group-card');
+        if (!card || e.target.closest('a, button')) return;
+        const link = card.querySelector('a[href]');
+        if (link) window.location.href = link.href;
+    });
+
     /* generateFlagSVG — used only as an instant CSS background pre-fill
        while the real /api/flag/... request is in flight on grid pages. */
     function generateFlagSVG(name) {
