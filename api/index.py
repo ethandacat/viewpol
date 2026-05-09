@@ -13,6 +13,7 @@ from api.helpers.items import items
 from api.helpers.kitpvp import kitpvp
 from api.helpers.sieges import sieges
 from api.helpers.shop_groups import shop_groups
+from api.helpers.flags import flags
 from api.helpers.server_status import server_status
 from api.helpers.skin import skin
 from api.helpers.town import town
@@ -35,6 +36,7 @@ app.register_blueprint(items.app)
 app.register_blueprint(kitpvp.app)
 app.register_blueprint(sieges.app)
 app.register_blueprint(shop_groups.app)
+app.register_blueprint(flags.app)
 app.register_blueprint(server_status.app)
 app.register_blueprint(skin.app)
 app.register_blueprint(town.app)

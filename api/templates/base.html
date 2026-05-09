@@ -310,6 +310,8 @@
         {% block content %}{% endblock %}
     </div>
     <script>
+    /* generateFlagSVG — used only as an instant CSS background pre-fill
+       while the real /api/flag/... request is in flight on grid pages. */
     function generateFlagSVG(name) {
         const fontSize = name.length > 18 ? 10 : name.length > 12 ? 13 : 15;
         const label = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').toUpperCase();

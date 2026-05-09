@@ -15,10 +15,9 @@
     {% for n in players %}
     <div class="player-card" data-name="{{ n.name }}">
         <img fetchpriority="high"
-             src="https://cdn.earthpol.com/nations/{{ n.name.replace(' ', '_') }}.png"
+             src="/api/flag/nation/{{ n.name.replace(' ', '_') }}"
              alt="{{ n.name }} flag"
-             style="width:100%;height:auto;max-height:180px;object-fit:contain;"
-             onerror="this.onerror=null;this.src=generateFlagSVG(this.closest('[data-name]').dataset.name);">
+             style="width:100%;height:auto;max-height:180px;object-fit:contain;">
         <a href="/nations/{{ n.uuid }}" style="display:block;text-align:center;">{{ n.name }}</a>
     </div>
     {% endfor %}
@@ -44,7 +43,7 @@
             if (img && !img.dataset.prefilled) {
                 img.dataset.prefilled = '1';
                 const name = c.dataset.name;
-                img.style.cssText += ';background:' + `url("${generateFlagSVG(name)}") center/contain no-repeat`;
+                img.style.cssText += ';background:url("/api/flag/nation/' + encodeURIComponent(name.replace(/ /g,'_')) + '") center/contain no-repeat';
             }
             frag.appendChild(c);
         });
