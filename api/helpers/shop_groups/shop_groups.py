@@ -275,10 +275,16 @@ def sg_user_shops():
     raw = s_res.json()
     shops = raw[0] if raw and isinstance(raw[0], list) else [s for s in raw if isinstance(s, dict)]
     for s in shops:
-        s["item"] = itemstack.parse(s["item"])
-        s["type"] = _normalize_type(s.get("type", ""))
-        qty = (s["item"] or {}).get("amount") or 1
-        s["unit_price"] = s["price"] / qty if qty else None
+        try:
+            if isinstance(s.get("item"), str):
+                s["item"] = itemstack.parse(s["item"])
+            if not isinstance(s.get("item"), dict):
+                continue
+            s["type"] = _normalize_type(s.get("type", ""))
+            qty = s["item"].get("amount") or 1
+            s["unit_price"] = s["price"] / qty if qty else None
+        except Exception:
+            continue
     return jsonify({"username": username, "shops": _sanitize_shops(shops)})
 
 
