@@ -13,7 +13,7 @@ Files written to DATA_DIR (default: ./data/):
   players.json  towns.json  nations.json  sieges.json
 """
 
-import json, time, os, gc, requests
+import json, gc, time, os, requests
 from pathlib import Path
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
@@ -26,13 +26,17 @@ TIMEOUT  = 20     # seconds before giving up on one request
 _http = requests.Session()
 _http.headers.update({"User-Agent": "viewpol/1.0", "Accept": "application/json"})
 
-# Try to import malloc_trim for Linux — returns memory to OS after each cycle
+# Register malloc_trim as a GC callback — fires automatically after every
+# collection cycle, returning freed heap pages to the OS on Linux.
 try:
     import ctypes
     _libc = ctypes.cdll.LoadLibrary("libc.so.6")
-    def _trim(): _libc.malloc_trim(0)
+    def _gc_callback(phase, info):
+        if phase == "stop":
+            _libc.malloc_trim(0)
+    gc.callbacks.append(_gc_callback)
 except Exception:
-    def _trim(): pass
+    pass
 
 
 def _fix_names(data: list):
@@ -80,6 +84,3 @@ while True:
         fetch_one(endpoint, filename, transform)
         time.sleep(PAUSE)
 
-    # After a full cycle: collect garbage and ask the OS for memory back
-    gc.collect()
-    _trim()

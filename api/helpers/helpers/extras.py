@@ -2,12 +2,17 @@ from flask import Blueprint
 from datetime import datetime, timezone
 import gc
 
+# Register malloc_trim as a GC callback — fires automatically after every
+# collection, returning freed heap pages to the OS on Linux.
 try:
     import ctypes
     _libc = ctypes.cdll.LoadLibrary("libc.so.6")
-    def _trim(): _libc.malloc_trim(0)
+    def _gc_callback(phase, info):
+        if phase == "stop":
+            _libc.malloc_trim(0)
+    gc.callbacks.append(_gc_callback)
 except Exception:
-    def _trim(): pass
+    pass
 
 UTC = timezone.utc
 
@@ -21,11 +26,7 @@ def datetimeformat(value):
 
 @app.after_app_request
 def _release_memory(response):
-    """Return freed Python heap pages to the OS after every request.
-    Prevents RSS from climbing to peak-request watermark and staying there.
-    gc.collect() catches any reference cycles; malloc_trim(0) tells glibc
-    to actually hand the free pages back to the kernel (Linux only; no-op
-    on other platforms via the fallback above)."""
+    """Trigger a GC cycle after every request. The registered gc.callback
+    will call malloc_trim(0) automatically when collection finishes."""
     gc.collect()
-    _trim()
     return response
