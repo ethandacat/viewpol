@@ -1,11 +1,16 @@
 from flask import Blueprint, render_template, redirect
-from ..helpers.cache import sieges_cache
+from ..helpers.cache import load
 
 app = Blueprint("sieges", __name__, template_folder="")
 
 
 def load_sieges():
-    return sieges_cache().all()
+    # sieges.json is a dict, not a list — read directly from disk
+    data = load("sieges.json")
+    if isinstance(data, dict):
+        return data
+    # Fallback: empty structure so the page renders rather than 500ing
+    return {"sieges": [], "battleSessionTimeTill": 0, "battleSessionTimeRemaining": 0}
 
 
 @app.route("/sieges")

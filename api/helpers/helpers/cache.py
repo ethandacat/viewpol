@@ -86,30 +86,30 @@ class LookupCache:
 _players  = LookupCache("players.json")
 _towns    = LookupCache("towns.json")
 _nations  = LookupCache("nations.json")
-_sieges   = LookupCache("sieges.json")
+# NOTE: sieges.json is a dict {sieges:[...], battleSessionTimeTill:..., ...}
+# so it cannot go through LookupCache (which only stores lists). Read it
+# directly from disk in load_sieges() / load("sieges.json").
 
 
 def players_cache()  -> LookupCache: return _players
 def towns_cache()    -> LookupCache: return _towns
 def nations_cache()  -> LookupCache: return _nations
-def sieges_cache()   -> LookupCache: return _sieges
 
 
 # ── Convenience wrappers (keep backward compat with old load/find API) ─
 
 def load(filename: str, fallback_endpoint: str | None = None) -> list | dict:
     """Legacy: used by index.py for counts. Returns the cached list."""
-    # Map to a singleton if we have one
+    # Map to a singleton if we have one (list-structured files only)
     _map = {
         "players.json": _players,
         "towns.json":   _towns,
         "nations.json": _nations,
-        "sieges.json":  _sieges,
     }
     if filename in _map:
         return _map[filename].all()
 
-    # Unmanaged file (e.g. shopdata.json) — just read from disk
+    # Unmanaged or dict-structured file — just read from disk
     path = DATA_DIR / filename
     try:
         return json.loads(path.read_bytes())
