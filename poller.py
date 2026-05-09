@@ -6,8 +6,8 @@ import json, time, sys, os, requests
 from pathlib import Path
 
 DATA_FILE   = Path(os.environ.get("DATA_DIR", "data")) / "server_history.json"
-MAX_ENTRIES = 60480   # 7 days at 10s intervals
-INTERVAL    = 10      # seconds
+MAX_ENTRIES = 10080   # 7 days at 1min intervals
+INTERVAL    = 60      # seconds
 MC_API      = "https://api.mcsrvstat.us/3/play.earthpol.com"
 
 session = requests.Session()
