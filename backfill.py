@@ -16,9 +16,6 @@ from datetime import datetime, timezone
 
 DATA_FILE = Path(os.environ.get("DATA_DIR", "data")) / "server_history.json"
 SOURCE    = "https://earthpol.org/api/players/onlineHistory"
-KEEP_MS   = 18 * 60 * 1000   # 18 minutes of live data to preserve
-
-
 def main():
     now_ms = int(time.time() * 1000)
 
@@ -28,9 +25,7 @@ def main():
     except Exception:
         existing = []
 
-    live_cutoff = now_ms - KEEP_MS
-    live_tail   = [e for e in existing if e["ts"] >= live_cutoff]
-    print(f"Keeping {len(live_tail)} live entries from the last 18 minutes")
+    print(f"Found {len(existing)} existing entries in history file")
 
     # ── 2. Fetch earthpol.org history ─────────────────────────────
     print(f"Fetching {SOURCE} …")
@@ -55,10 +50,11 @@ def main():
             "max":     0,          # not available in hourly data
         })
 
-    # ── 4. Merge: historical first, live tail on top ───────────────
-    # Drop any historical entries that overlap the live window
-    live_start = live_tail[0]["ts"] if live_tail else now_ms
-    historical = [e for e in historical if e["ts"] < live_start]
+    # ── 4. Merge: historical fills the past, live data picks up after ─
+    # Keep all existing entries that come after the last historical bucket
+    hist_end   = historical[-1]["ts"] if historical else 0
+    live_tail  = [e for e in existing if e["ts"] > hist_end]
+    historical = [e for e in historical if e["ts"] < (existing[0]["ts"] if existing else now_ms)]
 
     merged = sorted(historical + live_tail, key=lambda e: e["ts"])
     print(f"Merged total: {len(merged)} entries  "
