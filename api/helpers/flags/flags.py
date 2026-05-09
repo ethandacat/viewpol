@@ -1,6 +1,12 @@
 """
 Flags API — proxy + cache for EarthPol CDN flags.
 
+Image bytes are NEVER loaded into Python RAM.
+Disk hits are served via send_file() — the OS page cache handles it.
+The old in-memory (_mem) dict has been removed: it stored raw PNG bytes
+per flag and never evicted entries that stopped being requested (e.g.
+after a siege ended), causing unbounded RAM growth.
+
 Endpoints:
   GET /api/flag/nation/<name>  – nation flag, SVG fallback
   GET /api/flag/town/<name>    – town flag, SVG fallback
@@ -15,17 +21,14 @@ DATA_DIR  = Path(os.environ.get("DATA_DIR", "data"))
 CACHE_DIR = DATA_DIR / "flag_cache"
 CDN_BASE  = "https://cdn.earthpol.com"
 
-# In-memory hot cache:  url → (bytes, mimetype, fetched_at)
-_mem: dict = {}
-MEM_TTL   = 300     # 5 min in-memory
-DISK_TTL  = 86400   # 24 h disk hit cache
-MISS_TTL  = 3600    # 1 h "known 404" cache
+DISK_TTL  = 86400   # 24 h — keep cached PNGs on disk
+MISS_TTL  = 3600    # 1 h  — remember known 404s
 
 _http = reqs.Session()
 _http.headers.update({"User-Agent": "viewpol/1.0", "Accept": "image/*"})
 
 
-# ── helpers ──────────────────────────────────────────────────────
+# ── helpers ──────────────────────────────────────────────────────────
 
 def _svg_fallback(name: str) -> Response:
     label = (name.replace("&", "&amp;")
@@ -49,65 +52,55 @@ def _cache_key(url: str) -> str:
     return hashlib.md5(url.encode()).hexdigest()
 
 
-def _try_cdn(url: str):
-    """Return (bytes, mimetype) on success, None on miss/error."""
-    key = _cache_key(url)
+def _try_cdn(url: str) -> Path | None:
+    """
+    Returns a Path to the cached PNG file on success, None on miss/error.
+    No image bytes ever enter Python RAM — callers use send_file().
+    """
+    key       = _cache_key(url)
+    hit_path  = CACHE_DIR / f"{key}.png"
+    miss_path = CACHE_DIR / f"{key}.miss"
 
-    # 1. Memory cache
-    hit = _mem.get(key)
-    if hit:
-        data, mime, ts = hit
-        if time.time() - ts < MEM_TTL:
-            return data, mime
-        del _mem[key]
-
-    # 2. Disk hit cache
-    hit_path = CACHE_DIR / f"{key}.png"
+    # 1. Disk hit cache
     if hit_path.exists():
         age = time.time() - hit_path.stat().st_mtime
         if age < DISK_TTL:
-            data = hit_path.read_bytes()
-            _mem[key] = (data, "image/png", time.time())
-            return data, "image/png"
+            return hit_path
         hit_path.unlink(missing_ok=True)
 
-    # 3. Disk miss cache (known 404)
-    miss_path = CACHE_DIR / f"{key}.miss"
+    # 2. Disk miss cache (known 404 — don't hammer CDN)
     if miss_path.exists():
         if time.time() - miss_path.stat().st_mtime < MISS_TTL:
             return None
         miss_path.unlink(missing_ok=True)
 
-    # 4. Live CDN fetch
+    # 3. Live CDN fetch
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
     try:
-        r = _http.get(url, timeout=1, allow_redirects=True)
+        r  = _http.get(url, timeout=1, allow_redirects=True)
         ct = r.headers.get("Content-Type", "")
         if r.status_code == 200 and ct.startswith("image/"):
-            data = r.content
-            CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            hit_path.write_bytes(data)
-            _mem[key] = (data, "image/png", time.time())
-            return data, "image/png"
+            hit_path.write_bytes(r.content)
+            r.close()
+            return hit_path
+        r.close()
     except Exception:
         pass
 
-    # Cache miss so we don't hammer CDN
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
     miss_path.touch()
     return None
 
 
 def _resolve(cdn_paths: list[str], fallback_name: str) -> Response:
     for path in cdn_paths:
-        result = _try_cdn(f"{CDN_BASE}/{path}")
-        if result:
-            data, mime = result
-            return Response(data, mimetype=mime,
-                            headers={"Cache-Control": "public, max-age=86400"})
+        disk_path = _try_cdn(f"{CDN_BASE}/{path}")
+        if disk_path:
+            return send_file(str(disk_path), mimetype="image/png",
+                             max_age=86400, conditional=True)
     return _svg_fallback(fallback_name)
 
 
-# ── routes ───────────────────────────────────────────────────────
+# ── routes ────────────────────────────────────────────────────────────
 
 @app.route("/api/flag/nation/<name>")
 def flag_nation(name: str):
@@ -119,5 +112,3 @@ def flag_nation(name: str):
 def flag_town(name: str):
     cdn = name.replace(" ", "_")
     return _resolve([f"towns/{cdn}.png"], name)
-
-

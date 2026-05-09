@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify
 import requests as reqs
-import json, time, os
+import json, time, os, gc
 from codecs import decode
 from pathlib import Path
-from threading import Thread
+from threading import Thread, Lock
 from ..helpers import itemstack
 
 app = Blueprint("shops", __name__, template_folder="")
@@ -20,6 +20,7 @@ SHOP_TTL       = 300   # seconds before re-fetching from EarthPol API
 
 _cache         = None
 _cache_ts      = 0.0
+_fetch_lock    = Lock()          # prevents two threads loading simultaneously
 
 
 # ── Type normalisation ─────────────────────────────────────────────
@@ -57,24 +58,34 @@ def load_shops():
     if _cache is not None and now - _cache_ts < SHOP_TTL:
         return _cache
 
-    # 2. Warm disk cache (avoid hitting EarthPol API if file is fresh)
-    try:
-        if SHOP_FILE.exists() and now - SHOP_FILE.stat().st_mtime < SHOP_TTL:
-            shops = json.loads(decode(SHOP_FILE.read_bytes()))
-            _process(shops)
-            _cache, _cache_ts = shops, now
+    with _fetch_lock:
+        # Re-check after acquiring lock — another thread may have just loaded
+        if _cache is not None and time.time() - _cache_ts < SHOP_TTL:
             return _cache
-    except Exception:
-        pass
 
-    # 3. Fetch fresh from EarthPol
-    raw = requests.get("https://api.earthpol.com/astra/shops").content
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    SHOP_FILE.write_bytes(raw)
-    shops = json.loads(decode(raw))
-    _process(shops)
-    _cache, _cache_ts = shops, now
-    return _cache
+        # Release old cache BEFORE allocating new — avoids holding two copies
+        _cache = None
+        gc.collect()
+
+        # 2. Warm disk cache
+        try:
+            if SHOP_FILE.exists() and now - SHOP_FILE.stat().st_mtime < SHOP_TTL:
+                shops = json.loads(decode(SHOP_FILE.read_bytes()))
+                _process(shops)
+                _cache, _cache_ts = shops, time.time()
+                return _cache
+        except Exception:
+            pass
+
+        # 3. Fetch fresh from EarthPol
+        raw = requests.get("https://api.earthpol.com/astra/shops").content
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        SHOP_FILE.write_bytes(raw)
+        shops = json.loads(decode(raw))
+        del raw                     # free raw bytes before processing
+        _process(shops)
+        _cache, _cache_ts = shops, time.time()
+        return _cache
 
 
 def update_shop_cache():
