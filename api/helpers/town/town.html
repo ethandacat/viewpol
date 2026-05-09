@@ -17,14 +17,16 @@
     </div>
     <h1>{{ data.name }}</h1>
     {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
+    {% set st = data.stats or {} %}
+    {% set ts = data.timestamps or {} %}
     <div class="stats-bar">
-        <span>👥 {{ data.stats.numResidents }} residents</span>
+        <span>👥 {{ st.numResidents or 0 }} residents</span>
         <span class="stats-sep">·</span>
-        <span>🗺️ {{ data.stats.numTownBlocks }} / {{ data.stats.maxTownBlocks }} blocks</span>
+        <span>🗺️ {{ st.numTownBlocks or 0 }} / {{ st.maxTownBlocks or 0 }} blocks</span>
         <span class="stats-sep">·</span>
-        <span>💰 {{ data.stats.balance | round(1) }} gold</span>
+        <span>💰 {{ (st.balance or 0) | round(1) }} gold</span>
         <span class="stats-sep">·</span>
-        <span>📅 Since {{ (data.timestamps.registered / 1000) | datetimeformat }}</span>
+        <span>📅 Since {{ ((ts.registered or 0) / 1000) | datetimeformat }}</span>
     </div>
 </div>
 
@@ -71,10 +73,10 @@
                     <span class="none-text">None</span>
                 {% endif %}
             </div>
-            {% if data.timestamps.joinedNationAt %}
+            {% if ts.joinedNationAt %}
             <div class="info-row">
                 <span class="info-label">Joined</span>
-                <span style="color:#888;font-size:13px">{{ (data.timestamps.joinedNationAt / 1000) | datetimeformat }}</span>
+                <span style="color:#888;font-size:13px">{{ ((ts.joinedNationAt or 0) / 1000) | datetimeformat }}</span>
             </div>
             {% endif %}
             {% if data.status.isForSale and data.forSalePrice is defined %}
@@ -83,10 +85,10 @@
                 <span style="color:#facc15;font-size:13px">{{ data.forSalePrice | round(1) }}g</span>
             </div>
             {% endif %}
-            {% if data.status.isRuined and data.timestamps.ruinedAt %}
+            {% if data.status.isRuined and ts.ruinedAt %}
             <div class="info-row">
                 <span class="info-label">Ruined</span>
-                <span style="color:#888;font-size:13px">{{ (data.timestamps.ruinedAt / 1000) | datetimeformat }}</span>
+                <span style="color:#888;font-size:13px">{{ ((ts.ruinedAt or 0) / 1000) | datetimeformat }}</span>
             </div>
             {% endif %}
         </div>
@@ -114,19 +116,19 @@
         <div class="section">
             <h2>🗺️ Town Blocks</h2>
             <div class="blocks-info">
-                <span>{{ data.stats.numTownBlocks }} / {{ data.stats.maxTownBlocks }}</span>
-                {% if data.stats.bonusBlocks > 0 %}
-                    <span class="bonus">+{{ data.stats.bonusBlocks }} bonus</span>
+                <span>{{ st.numTownBlocks or 0 }} / {{ st.maxTownBlocks or 0 }}</span>
+                {% if (st.bonusBlocks or 0) > 0 %}
+                    <span class="bonus">+{{ st.bonusBlocks }} bonus</span>
                 {% endif %}
             </div>
             <div class="progress-track">
-                <div class="progress-fill" style="width: {{ [((data.stats.numTownBlocks / data.stats.maxTownBlocks) * 100) | round(1), 100] | min }}%"></div>
+                <div class="progress-fill" style="width: {{ [[((st.numTownBlocks or 0) / ((st.maxTownBlocks or 0) if (st.maxTownBlocks or 0) > 0 else 1) * 100) | round(1), 100] | min, 0] | max }}%"></div>
             </div>
         </div>
 
         <div class="two-col">
             <div class="section" data-threshold="10">
-                <h2>🛡️ Trusted <span class="count">{{ data.trusted|length }}</span></h2>
+                <h2>🛡️ Trusted <span class="count">{{ (data.trusted or [])|length }}</span></h2>
                 {% if data.trusted %}
                     {% for t in data.trusted %}
                         <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/players/{{ t.uuid }}">{{ t.name }}</a></span>
@@ -136,7 +138,7 @@
                 {% endif %}
             </div>
             <div class="section" data-threshold="10">
-                <h2>🏴‍☠️ Outlaws <span class="count">{{ data.outlaws|length }}</span></h2>
+                <h2>🏴‍☠️ Outlaws <span class="count">{{ (data.outlaws or [])|length }}</span></h2>
                 {% if data.outlaws %}
                     {% for o in data.outlaws %}
                         <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/players/{{ o.uuid }}">{{ o.name }}</a></span>
@@ -148,7 +150,7 @@
         </div>
 
         <div class="section" data-threshold="20">
-            <h2>👥 Residents <span class="count">{{ data.stats.numResidents }}</span></h2>
+            <h2>👥 Residents <span class="count">{{ st.numResidents or 0 }}</span></h2>
             {% if data.residents %}
                 {% for r in data.residents %}
                     <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/players/{{ r.uuid }}">{{ r.name }}</a></span>

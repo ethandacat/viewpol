@@ -10,16 +10,18 @@
          alt="{{ data.name }} flag">
     <h1>{{ data.name }}</h1>
     {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
+    {% set st = data.stats or {} %}
+    {% set ts = data.timestamps or {} %}
     <div class="stats-bar">
-        <span>👥 {{ data.stats.numResidents }} residents</span>
+        <span>👥 {{ st.numResidents or 0 }} residents</span>
         <span class="stats-sep">·</span>
-        <span>🏘️ {{ data.stats.numTowns }} towns</span>
+        <span>🏘️ {{ st.numTowns or 0 }} towns</span>
         <span class="stats-sep">·</span>
-        <span>🗺️ {{ data.stats.numTownBlocks }} blocks</span>
+        <span>🗺️ {{ st.numTownBlocks or 0 }} blocks</span>
         <span class="stats-sep">·</span>
-        <span>💰 {{ data.stats.balance | round(1) }} gold</span>
+        <span>💰 {{ (st.balance or 0) | round(1) }} gold</span>
         <span class="stats-sep">·</span>
-        <span>📅 Since {{ (data.timestamps.registered / 1000) | datetimeformat }}</span>
+        <span>📅 Since {{ ((ts.registered or 0) / 1000) | datetimeformat }}</span>
     </div>
 </div>
 
@@ -80,7 +82,7 @@
 
         <div class="relations-row">
             <div class="section" data-threshold="10">
-                <h2>🤝 Allies <span class="count">{{ data.allies|length }}</span></h2>
+                <h2>🤝 Allies <span class="count">{{ (data.allies or [])|length }}</span></h2>
                 {% if data.allies %}
                     {% for t in data.allies %}
                         <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/nations/{{ t.uuid }}">{{ t.name }}</a></span>
@@ -90,7 +92,7 @@
                 {% endif %}
             </div>
             <div class="section" data-threshold="10">
-                <h2>⚔️ Enemies <span class="count">{{ data.enemies|length }}</span></h2>
+                <h2>⚔️ Enemies <span class="count">{{ (data.enemies or [])|length }}</span></h2>
                 {% if data.enemies %}
                     {% for o in data.enemies %}
                         <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/nations/{{ o.uuid }}">{{ o.name }}</a></span>
@@ -100,7 +102,7 @@
                 {% endif %}
             </div>
             <div class="section" data-threshold="10">
-                <h2>🚫 Sanctioned <span class="count">{{ data.sanctioned|length }}</span></h2>
+                <h2>🚫 Sanctioned <span class="count">{{ (data.sanctioned or [])|length }}</span></h2>
                 {% if data.sanctioned %}
                     {% for o in data.sanctioned %}
                         <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/nations/{{ o.uuid }}">{{ o.name }}</a></span>
@@ -112,7 +114,7 @@
         </div>
 
         <div class="section" data-threshold="20">
-            <h2>👥 Residents <span class="count">{{ data.stats.numResidents }}</span></h2>
+            <h2>👥 Residents <span class="count">{{ st.numResidents or 0 }}</span></h2>
             {% if data.residents %}
                 {% for r in data.residents %}
                     <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/players/{{ r.uuid }}">{{ r.name }}</a></span>
@@ -123,7 +125,7 @@
         </div>
 
         <div class="section" data-threshold="20">
-            <h2>🏘️ Towns <span class="count">{{ data.stats.numTowns }}</span></h2>
+            <h2>🏘️ Towns <span class="count">{{ st.numTowns or 0 }}</span></h2>
             {% if data.towns %}
                 {% for r in data.towns %}
                     <span class="list-entry">{% if not loop.first %}, {% endif %}<a href="/towns/{{ r.uuid }}">{{ r.name }}</a></span>
