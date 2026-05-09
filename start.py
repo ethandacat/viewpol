@@ -29,6 +29,7 @@ SERVICES = [
         "name": "gunicorn",
         "cmd":  ["gunicorn",
                  "-w", args.workers,
+                 "-k", "gevent",
                  "-b", f"{args.host}:{args.port}",
                  "--access-logfile", "-",
                  "--max-requests", "1000",

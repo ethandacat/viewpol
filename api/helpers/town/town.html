@@ -7,12 +7,16 @@
 <div class="detail-header">
     <div class="header-flags">
         <img class="header-flag"
-             src="/api/flag/town/{{ data.name.replace(' ', '_') }}"
-             alt="{{ data.name }} flag">
+             src="https://cdn.earthpol.com/towns/{{ data.name.replace(' ', '_') }}.png"
+             data-flag-name="{{ data.name }}"
+             alt="{{ data.name }} flag"
+             onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.flagName)">
         {% if data.nation and data.nation.name %}
         <img class="header-flag"
-             src="/api/flag/nation/{{ data.nation.name.replace(' ', '_') }}"
-             alt="{{ data.nation.name }} flag">
+             src="https://cdn.earthpol.com/nations/{{ data.nation.name.replace(' ', '_') }}.png"
+             data-flag-name="{{ data.nation.name }}"
+             alt="{{ data.nation.name }} flag"
+             onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.flagName)">
         {% endif %}
     </div>
     <h1>{{ data.name }}</h1>

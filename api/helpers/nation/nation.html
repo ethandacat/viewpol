@@ -6,8 +6,10 @@
 
 <div class="detail-header">
     <img class="header-flag"
-         src="/api/flag/nation/{{ data.name.replace(' ', '_') }}"
-         alt="{{ data.name }} flag">
+         src="https://cdn.earthpol.com/nations/{{ data.name.replace(' ', '_') }}.png"
+         data-flag-name="{{ data.name }}"
+         alt="{{ data.name }} flag"
+         onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.flagName)">
     <h1>{{ data.name }}</h1>
     {% if data.board %}<p class="board-text">{{ data.board }}</p>{% endif %}
     {% set st = data.stats or {} %}

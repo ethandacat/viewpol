@@ -42,16 +42,22 @@
         <div class="siege-matchup">
             <div class="side attacker">
                 <div class="side-label">Attacker</div>
-                <img class="side-flag" src="/api/flag/nation/{{ siege.attacker | replace(' ', '_') }}"
-                     alt="{{ siege.attacker }} flag">
+                <img class="side-flag"
+                     src="https://cdn.earthpol.com/nations/{{ siege.attacker | replace(' ', '_') }}.png"
+                     data-flag-name="{{ siege.attacker }}"
+                     alt="{{ siege.attacker }} flag"
+                     onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.flagName)">
                 <div class="side-name">{{ siege.attacker }}</div>
                 <div class="side-pts">{{ siege.attackerPoints }} pts</div>
             </div>
             <div class="vs">VS</div>
             <div class="side defender">
                 <div class="side-label">Defender</div>
-                <img class="side-flag" src="/api/flag/town/{{ siege.defender | replace(' ', '_') }}"
-                     alt="{{ siege.defender }} flag">
+                <img class="side-flag"
+                     src="https://cdn.earthpol.com/towns/{{ siege.defender | replace(' ', '_') }}.png"
+                     data-flag-name="{{ siege.defender }}"
+                     alt="{{ siege.defender }} flag"
+                     onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.flagName)">
                 <div class="side-name">{{ siege.defender }}</div>
                 <div class="side-pts">{{ siege.defenderPoints }} pts</div>
             </div>

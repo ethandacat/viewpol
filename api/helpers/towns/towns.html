@@ -15,8 +15,10 @@
     {% for t in players %}
     <div class="player-card" data-name="{{ t.name }}">
         <img fetchpriority="high"
-             src="/api/flag/town/{{ t.name.replace(' ', '_') }}"
+             src="https://cdn.earthpol.com/towns/{{ t.name.replace(' ', '_') }}.png"
+             data-flag-name="{{ t.name }}"
              alt="{{ t.name }} flag"
+             onerror="this.onerror=null;this.src=generateFlagSVG(this.dataset.flagName)"
              style="width:100%;height:auto;max-height:180px;object-fit:contain;">
         <a href="/towns/{{ t.uuid }}" style="display:block;text-align:center;">{{ t.name }}</a>
     </div>
@@ -41,8 +43,6 @@
             const img = c.querySelector('img');
             if (img && !img.dataset.prefilled) {
                 img.dataset.prefilled = '1';
-                const name = c.dataset.name;
-                img.style.cssText += ';background:url("/api/flag/town/' + encodeURIComponent(name.replace(/ /g,'_')) + '") center/contain no-repeat';
             }
             frag.appendChild(c);
         });
