@@ -1,26 +1,22 @@
 from flask import Blueprint, render_template, request, jsonify
-import requests as reqs
-import json, time, os, gc
+import json, time, os
 from codecs import decode
 from pathlib import Path
-from threading import Thread, Lock
+from threading import Thread
 from ..helpers import itemstack
 
 app = Blueprint("shops", __name__, template_folder="")
 
-requests = reqs.Session()
-requests.headers.update({
+import requests as reqs
+_http = reqs.Session()
+_http.headers.update({
     "User-Agent": "earthpol-web/1.0",
     "Accept": "application/json",
 })
 
-DATA_DIR       = Path(os.environ.get("DATA_DIR", "data"))
-SHOP_FILE      = DATA_DIR / "shopdata.json"
-SHOP_TTL       = 300   # seconds before re-fetching from EarthPol API
-
-_cache         = None
-_cache_ts      = 0.0
-_fetch_lock    = Lock()          # prevents two threads loading simultaneously
+DATA_DIR  = Path(os.environ.get("DATA_DIR", "data"))
+SHOP_FILE = DATA_DIR / "shopdata.json"
+SHOP_TTL  = 300   # seconds — trigger background refresh if stale
 
 
 # ── Type normalisation ─────────────────────────────────────────────
@@ -37,7 +33,7 @@ def get_shop_type(n):
     return "UNKNOWN"
 
 
-# ── Item parsing (mutates list in place) ───────────────────────────
+# ── Item parsing ───────────────────────────────────────────────────
 
 def _process(shops):
     for n in shops:
@@ -48,56 +44,37 @@ def _process(shops):
         n["unit_price"] = n["price"] / qty if qty else float("inf")
 
 
-# ── Cache + fetch ──────────────────────────────────────────────────
+# ── Disk read — no in-memory cache ────────────────────────────────
 
-def load_shops():
-    global _cache, _cache_ts
-    now = time.time()
-
-    # 1. Hot in-memory cache (free, no I/O)
-    if _cache is not None and now - _cache_ts < SHOP_TTL:
-        return _cache
-
-    with _fetch_lock:
-        # Re-check after acquiring lock — another thread may have just loaded
-        if _cache is not None and time.time() - _cache_ts < SHOP_TTL:
-            return _cache
-
-        # Release old cache BEFORE allocating new — avoids holding two copies
-        _cache = None
-        gc.collect()
-
-        # 2. Warm disk cache
-        try:
-            if SHOP_FILE.exists() and now - SHOP_FILE.stat().st_mtime < SHOP_TTL:
-                shops = json.loads(decode(SHOP_FILE.read_bytes()))
-                _process(shops)
-                _cache, _cache_ts = shops, time.time()
-                return _cache
-        except Exception:
-            pass
-
-        # 3. Fetch fresh from EarthPol
-        raw = requests.get("https://api.earthpol.com/astra/shops").content
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        SHOP_FILE.write_bytes(raw)
-        shops = json.loads(decode(raw))
-        del raw                     # free raw bytes before processing
+def load_shops() -> list:
+    """Read shopdata.json from disk and return a freshly processed list.
+    No module-level state is kept; every call allocates and returns a new list.
+    """
+    try:
+        shops = json.loads(decode(SHOP_FILE.read_bytes()))
         _process(shops)
-        _cache, _cache_ts = shops, time.time()
-        return _cache
+        return shops
+    except Exception:
+        return []
 
 
-def update_shop_cache():
-    """Background refresh: re-fetch only when disk file is stale."""
+def _refresh_disk():
+    """Background thread: re-fetch from EarthPol API and overwrite shopdata.json."""
+    try:
+        raw = _http.get("https://api.earthpol.com/astra/shops").content
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = SHOP_FILE.with_suffix(".tmp")
+        tmp.write_bytes(raw)
+        tmp.replace(SHOP_FILE)
+    except Exception:
+        pass
+
+
+def _maybe_refresh():
+    """Kick off a background refresh if the disk file is stale."""
     try:
         if not SHOP_FILE.exists() or time.time() - SHOP_FILE.stat().st_mtime > SHOP_TTL:
-            raw = requests.get("https://api.earthpol.com/astra/shops").content
-            DATA_DIR.mkdir(parents=True, exist_ok=True)
-            SHOP_FILE.write_bytes(raw)
-            # Invalidate in-memory cache so next request picks up fresh data
-            global _cache, _cache_ts
-            _cache, _cache_ts = None, 0.0
+            Thread(target=_refresh_disk, daemon=True).start()
     except Exception:
         pass
 
@@ -129,7 +106,7 @@ def shops_page():
     query        = request.args.get("q", "").lower()
     stock_filter = request.args.get("stock_filter", "hide")
     type_filter  = request.args.get("type_filter",  "both")
-    Thread(target=update_shop_cache).start()
+    _maybe_refresh()
     return render_template("shops.html", query=query, stock_filter=stock_filter, type_filter=type_filter)
 
 
@@ -141,6 +118,7 @@ def shops_data():
     query        = request.args.get("q", "").lower()
     stock_filter = request.args.get("stock_filter", "hide")
     type_filter  = request.args.get("type_filter",  "both")
+    _maybe_refresh()
 
     reqdata = filter_shops(load_shops(), query, stock_filter, type_filter)
     start   = (page - 1) * SHOPS_PER_PAGE

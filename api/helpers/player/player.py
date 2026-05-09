@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect
 import requests as reqs
 from ..helpers import itemstack
-from ..helpers.cache import players_cache
+from ..helpers.cache import find
 
 app = Blueprint("player", __name__, template_folder="")
 
@@ -23,8 +23,8 @@ def _normalize_shop_type(n):
 
 @app.route("/players/<identifier>")
 def player(identifier):
-    # ── Player data from mtime-gated in-memory cache ──────────────
-    data = players_cache().find(identifier)
+    # ── Player data — fresh from disk every request ───────────────
+    data = find("players.json", identifier)
 
     if not data:
         # Edge-case fallback (new player not yet in cache file)

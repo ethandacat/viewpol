@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, redirect
-from ..helpers.cache import towns_cache
+from ..helpers.cache import find
 
 app = Blueprint("town", __name__, template_folder="")
 
 @app.route("/towns/<identifier>")
 def town(identifier):
-    data = towns_cache().find(identifier)
+    data = find("towns.json", identifier)
     if not data:
         return "", 404
     data_uuid = data.get("uuid", "")
