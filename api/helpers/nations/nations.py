@@ -1,18 +1,10 @@
 from flask import Blueprint, render_template, request
-import requests as reqs
+from ..helpers.cache import load
 
 app = Blueprint("nations", __name__, template_folder="")
-
-session = reqs.Session()
-session.headers.update({
-    "User-Agent": "earthpol-web/1.0",
-    "Accept": "application/json",
-})
 
 @app.route("/nations")
 def nations():
     query   = request.args.get('q', '').lower()
-    reqdata = session.get("https://api.earthpol.com/astra/nations").json()
-    for n in reqdata:
-        n["name"] = " ".join(n["name"].split("_"))
+    reqdata = load("nations.json", "nations")
     return render_template("nations.html", players=reqdata, query=query)

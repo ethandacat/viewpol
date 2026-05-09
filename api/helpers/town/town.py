@@ -1,20 +1,13 @@
 from flask import Blueprint, render_template, redirect
-import requests as reqs
+from ..helpers.cache import load, find
 
 app = Blueprint("town", __name__, template_folder="")
 
-requests = reqs.Session()
-requests.headers.update({
-    "User-Agent": "earthpol-web/1.0",
-    "Accept": "application/json",
-})
-
 @app.route("/towns/<identifier>")
 def town(identifier):
-    req = requests.post("https://api.earthpol.com/astra/towns", json={"query": [identifier]})
-    if req.status_code != 200 or len(req.json()) == 0:
+    data = find(load("towns.json", "towns"), identifier)
+    if not data:
         return "", 404
-    data = req.json()[0]
     data_uuid = data.get("uuid", "")
     if data_uuid and data_uuid != identifier:
         return redirect(f"/towns/{data_uuid}", 301)

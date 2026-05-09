@@ -1,17 +1,11 @@
 from flask import Blueprint, render_template, redirect
-import requests as reqs
+from ..helpers.cache import load as cache_load
 
 app = Blueprint("sieges", __name__, template_folder="")
 
-session = reqs.Session()
-session.headers.update({
-    "User-Agent": "earthpol-web/1.0",
-    "Accept": "application/json",
-})
-
 
 def load_sieges():
-    return session.get("https://api.earthpol.com/astra/sieges").json()
+    return cache_load("sieges.json", "sieges")
 
 
 @app.route("/sieges")

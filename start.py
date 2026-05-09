@@ -34,6 +34,10 @@ SERVICES = [
                  "wsgi:app"],
     },
     {
+        "name": "data_fetcher",
+        "cmd":  [PYTHON, "data_fetcher.py"],
+    },
+    {
         "name": "poller",
         "cmd":  [PYTHON, "poller.py"],
     },
