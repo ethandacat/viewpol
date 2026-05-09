@@ -1,10 +1,10 @@
 from flask import Blueprint, render_template, request
-from ..helpers.cache import load
+from ..helpers.cache import nations_cache
 
 app = Blueprint("nations", __name__, template_folder="")
 
 @app.route("/nations")
 def nations():
     query   = request.args.get('q', '').lower()
-    reqdata = load("nations.json", "nations")
+    reqdata = nations_cache().all()
     return render_template("nations.html", players=reqdata, query=query)

@@ -7,8 +7,15 @@ Usage:
     sudo bash -c 'cd /opt/hosted-sites/viewpol && nohup python3 history_poller.py >> /tmp/hist_poller.log 2>&1 &'
 """
 
-import json, time, os, sqlite3, requests
+import json, time, os, sqlite3, gc, requests
 from pathlib import Path
+
+try:
+    import ctypes
+    _libc = ctypes.cdll.LoadLibrary("libc.so.6")
+    def _trim(): _libc.malloc_trim(0)
+except Exception:
+    def _trim(): pass
 
 DATA_DIR  = Path(os.environ.get("DATA_DIR", "data"))
 DB_PATH   = DATA_DIR / "history.db"
@@ -198,4 +205,6 @@ while True:
     poll_items(con, ts)
     poll_kitpvp(con, ts)
     print(f"[{time.strftime('%H:%M:%S')}] Done. Next poll in {INTERVAL//60} min.", flush=True)
+    gc.collect()
+    _trim()
     time.sleep(INTERVAL)

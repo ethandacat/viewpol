@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, redirect
-from ..helpers.cache import load as cache_load
+from ..helpers.cache import sieges_cache
 
 app = Blueprint("sieges", __name__, template_folder="")
 
 
 def load_sieges():
-    return cache_load("sieges.json", "sieges")
+    return sieges_cache().all()
 
 
 @app.route("/sieges")

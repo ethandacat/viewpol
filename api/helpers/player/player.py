@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect
 import requests as reqs
 from ..helpers import itemstack
-from ..helpers.cache import load, find
+from ..helpers.cache import players_cache
 
 app = Blueprint("player", __name__, template_folder="")
 
@@ -23,22 +23,25 @@ def _normalize_shop_type(n):
 
 @app.route("/players/<identifier>")
 def player(identifier):
-    # ── Player data from disk cache ───────────────────────────────
-    data = find(load("players.json", "players"), identifier)
+    # ── Player data from mtime-gated in-memory cache ──────────────
+    data = players_cache().find(identifier)
 
-    # If not found by name/uuid, try a live lookup (handles edge cases)
     if not data:
-        req = _http.post("https://api.earthpol.com/astra/players",
-                         json={"query": [identifier]}, timeout=10)
-        if req.status_code != 200 or not req.json():
+        # Edge-case fallback (new player not yet in cache file)
+        try:
+            req = _http.post("https://api.earthpol.com/astra/players",
+                             json={"query": [identifier]}, timeout=10)
+            if req.status_code != 200 or not req.json():
+                return "", 404
+            data = req.json()[0]
+        except Exception:
             return "", 404
-        data = req.json()[0]
 
     data_uuid = data.get("uuid", "")
     if data_uuid and data_uuid != identifier:
         return redirect(f"/players/{data_uuid}", 301)
 
-    # ── Shops still fetched live (per-player, not bulk-cacheable) ─
+    # ── Shops fetched live (per-player, not bulk-cacheable) ───────
     uuid = data_uuid or identifier
     try:
         sreq      = _http.post("https://api.earthpol.com/astra/shops",
@@ -59,5 +62,4 @@ def player(identifier):
         n["unit_price"] = n["price"] / qty if qty else float("inf")
 
     shops.sort(key=lambda n: n["unit_price"])
-
     return render_template("player.html", data=data, shops=shops)
