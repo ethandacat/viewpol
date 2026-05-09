@@ -16,7 +16,7 @@
 <div class="matchup-row">
     <div class="faction-box attacker">
         <div class="faction-role">⚔️ Attacker</div>
-        <img class="faction-flag" src="/api/flag/faction/{{ siege.attacker | replace(' ', '_') }}"
+        <img class="faction-flag" src="/api/flag/nation/{{ siege.attacker | replace(' ', '_') }}"
              alt="{{ siege.attacker }} flag">
         <div class="faction-name">{{ siege.attacker }}</div>
         <div class="faction-pts">{{ siege.attackerPoints }} <span>pts</span></div>
@@ -36,7 +36,7 @@
     </div>
     <div class="faction-box defender">
         <div class="faction-role">🛡️ Defender</div>
-        <img class="faction-flag" src="/api/flag/faction/{{ siege.defender | replace(' ', '_') }}"
+        <img class="faction-flag" src="/api/flag/town/{{ siege.defender | replace(' ', '_') }}"
              alt="{{ siege.defender }} flag">
         <div class="faction-name">{{ siege.defender }}</div>
         <div class="faction-pts">{{ siege.defenderPoints }} <span>pts</span></div>

@@ -2,10 +2,8 @@
 Flags API — proxy + cache for EarthPol CDN flags.
 
 Endpoints:
-  GET /api/flag/nation/<name>   – nation flag, SVG fallback
-  GET /api/flag/town/<name>     – town flag, SVG fallback
-  GET /api/flag/faction/<name>  – try nation CDN, then town CDN, then SVG
-                                  (used by siege pages where attacker = nation = town name)
+  GET /api/flag/nation/<name>  – nation flag, SVG fallback
+  GET /api/flag/town/<name>    – town flag, SVG fallback
 """
 from flask import Blueprint, Response, send_file
 import os, time, hashlib, requests as reqs
@@ -123,8 +121,3 @@ def flag_town(name: str):
     return _resolve([f"towns/{cdn}.png"], name)
 
 
-@app.route("/api/flag/faction/<name>")
-def flag_faction(name: str):
-    """Nation → town fallback (siege pages pass same name for both)."""
-    cdn = name.replace(" ", "_")
-    return _resolve([f"nations/{cdn}.png", f"towns/{cdn}.png"], name)

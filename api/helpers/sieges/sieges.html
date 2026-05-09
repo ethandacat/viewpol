@@ -42,7 +42,7 @@
         <div class="siege-matchup">
             <div class="side attacker">
                 <div class="side-label">Attacker</div>
-                <img class="side-flag" src="/api/flag/faction/{{ siege.attacker | replace(' ', '_') }}"
+                <img class="side-flag" src="/api/flag/nation/{{ siege.attacker | replace(' ', '_') }}"
                      alt="{{ siege.attacker }} flag">
                 <div class="side-name">{{ siege.attacker }}</div>
                 <div class="side-pts">{{ siege.attackerPoints }} pts</div>
@@ -50,7 +50,7 @@
             <div class="vs">VS</div>
             <div class="side defender">
                 <div class="side-label">Defender</div>
-                <img class="side-flag" src="/api/flag/faction/{{ siege.defender | replace(' ', '_') }}"
+                <img class="side-flag" src="/api/flag/town/{{ siege.defender | replace(' ', '_') }}"
                      alt="{{ siege.defender }} flag">
                 <div class="side-name">{{ siege.defender }}</div>
                 <div class="side-pts">{{ siege.defenderPoints }} pts</div>
