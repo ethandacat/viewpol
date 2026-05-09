@@ -55,11 +55,20 @@ def player(identifier):
     else:
         shops = [s for s in shops_raw if isinstance(s, dict)]
 
+    safe = []
     for n in shops:
-        n["item"]       = itemstack.parse(n["item"])
-        n["type"]       = _normalize_shop_type(n)
-        qty             = n["item"]["amount"]
-        n["unit_price"] = n["price"] / qty if qty else float("inf")
+        try:
+            if isinstance(n.get("item"), str):
+                n["item"] = itemstack.parse(n["item"])
+            if not isinstance(n.get("item"), dict):
+                continue
+            n["type"]       = _normalize_shop_type(n)
+            qty             = n["item"].get("amount") or 1
+            n["unit_price"] = n["price"] / qty if qty else float("inf")
+            safe.append(n)
+        except Exception:
+            continue
+    shops = safe
 
     shops.sort(key=lambda n: n["unit_price"])
     return render_template("player.html", data=data, shops=shops)

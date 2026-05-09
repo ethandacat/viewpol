@@ -14,11 +14,11 @@
     {% endif %}
     {% if data.about %}<p class="board-text">{{ data.about }}</p>{% endif %}
     <div class="stats-bar">
-        <span>💰 {{ data.stats.balance | round(1) }} gold</span>
+        <span>💰 {{ ((data.stats or {}).balance or 0) | round(1) }} gold</span>
         <span class="stats-sep">·</span>
-        <span>📅 Since {{ (data.timestamps.registered / 1000) | datetimeformat }}</span>
+        <span>📅 Since {{ (((data.timestamps or {}).registered or 0) / 1000) | datetimeformat }}</span>
         <span class="stats-sep">·</span>
-        <span>🕐 Last seen {{ (data.timestamps.lastOnline / 1000) | datetimeformat }}</span>
+        <span>🕐 Last seen {{ (((data.timestamps or {}).lastOnline or 0) / 1000) | datetimeformat }}</span>
     </div>
 </div>
 
