@@ -80,7 +80,7 @@ def _try_cdn(url: str):
 
     # 4. Live CDN fetch
     try:
-        r = _http.get(url, timeout=4, allow_redirects=True)
+        r = _http.get(url, timeout=1, allow_redirects=True)
         ct = r.headers.get("Content-Type", "")
         if r.status_code == 200 and ct.startswith("image/"):
             data = r.content
