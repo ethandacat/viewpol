@@ -8,11 +8,12 @@ after the request function returns.
 
 import json, os
 from pathlib import Path
+from typing import Union, Optional
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
 
 
-def load(filename: str) -> list | dict:
+def load(filename: str) -> Union[list, dict]:
     """Read and parse a JSON file from DATA_DIR. Returns [] on any error."""
     try:
         return json.loads((DATA_DIR / filename).read_bytes())
@@ -20,7 +21,7 @@ def load(filename: str) -> list | dict:
         return []
 
 
-def find(filename: str, identifier: str) -> dict | None:
+def find(filename: str, identifier: str) -> Optional[dict]:
     """
     Load a list file and look up one item by UUID (exact) or name
     (case-insensitive, underscore-tolerant). Returns None if not found.

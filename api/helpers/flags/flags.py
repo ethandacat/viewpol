@@ -14,6 +14,7 @@ Endpoints:
 from flask import Blueprint, Response, send_file
 import os, time, hashlib, requests as reqs
 from pathlib import Path
+from typing import Optional, List
 
 app = Blueprint("flags", __name__)
 
@@ -52,7 +53,7 @@ def _cache_key(url: str) -> str:
     return hashlib.md5(url.encode()).hexdigest()
 
 
-def _try_cdn(url: str) -> Path | None:
+def _try_cdn(url: str) -> Optional[Path]:
     """
     Returns a Path to the cached PNG file on success, None on miss/error.
     No image bytes ever enter Python RAM — callers use send_file().
@@ -91,7 +92,7 @@ def _try_cdn(url: str) -> Path | None:
     return None
 
 
-def _resolve(cdn_paths: list[str], fallback_name: str) -> Response:
+def _resolve(cdn_paths: List[str], fallback_name: str) -> Response:
     for path in cdn_paths:
         disk_path = _try_cdn(f"{CDN_BASE}/{path}")
         if disk_path:
