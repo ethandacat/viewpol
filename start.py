@@ -35,7 +35,8 @@ SERVICES = [
                  "--worker-connections", "100",
                  "--access-logfile", "-",
                  "--max-requests", "500",
-                 "--max-requests-jitter", "50"],
+                 "--max-requests-jitter", "50",
+                 "--preload"],
     },
     {
         "name": "data_fetcher",
