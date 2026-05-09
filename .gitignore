@@ -3,12 +3,18 @@
 *.pyc
 __pycache__
 
-# Environments 
-.env 
-.venv 
-env/ 
-venv/ 
-ENV/ 
-env.bak/ 
-venv.bak/ 
-.env*.local.claude/
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env*.local
+
+# Claude worktrees / session data
+.claude/
+
+# Runtime data directory
+data/
