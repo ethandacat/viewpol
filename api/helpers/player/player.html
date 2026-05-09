@@ -35,6 +35,13 @@
             </div>
         </div>
 
+        <div class="hist-section" id="player-bal-hist">
+            <h2>💰 Balance History</h2>
+            <div class="hist-tabs"></div>
+            <div class="hist-svg-wrap"><div class="hist-empty">Loading…</div></div>
+            <div class="hist-stats"></div>
+        </div>
+
         <div class="section">
             <h2>📍 Location</h2>
             <div class="info-row">
@@ -45,6 +52,12 @@
                     <span class="none-text">None</span>
                 {% endif %}
             </div>
+            {% if data.timestamps.joinedTownAt %}
+            <div class="info-row">
+                <span class="info-label">Joined</span>
+                <span style="color:#888;font-size:13px">{{ (data.timestamps.joinedTownAt / 1000) | datetimeformat }}</span>
+            </div>
+            {% endif %}
             <div class="info-row">
                 <span class="info-label">Nation</span>
                 {% if data.nation and data.nation.name %}
@@ -53,6 +66,33 @@
                     <span class="none-text">None</span>
                 {% endif %}
             </div>
+        </div>
+
+        {% set town_ranks  = data.ranks.townRanks  if data.ranks and data.ranks.townRanks  else [] %}
+        {% set nation_ranks = data.ranks.nationRanks if data.ranks and data.ranks.nationRanks else [] %}
+        {% if town_ranks or nation_ranks %}
+        <div class="section">
+            <h2>🎖️ Ranks</h2>
+            {% if town_ranks %}
+            <div class="info-row">
+                <span class="info-label">Town</span>
+                <span style="color:#ccc;font-size:13px">{{ town_ranks | join(', ') }}</span>
+            </div>
+            {% endif %}
+            {% if nation_ranks %}
+            <div class="info-row">
+                <span class="info-label">Nation</span>
+                <span style="color:#ccc;font-size:13px">{{ nation_ranks | join(', ') }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="hist-section" id="player-kpvp-hist" style="display:none">
+            <h2>🎮 KitPvP History</h2>
+            <div class="hist-tabs"></div>
+            <div class="hist-svg-wrap"><div class="hist-empty">Loading…</div></div>
+            <div class="hist-stats"></div>
         </div>
 
         <div class="section" data-threshold="20">
@@ -380,6 +420,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderShops(false);
     }
+
+    // Deferred history chart loading
+    fetch('/api/history/player/{{ data.uuid }}')
+        .then(r => r.json())
+        .then(d => {
+            if (d.length) {
+                renderHistChart('player-bal-hist', d,
+                    [{key: 'balance', color: '#3b82f6', label: 'gold'}],
+                    v => v == null ? '—' : v.toFixed(1) + 'g');
+            } else {
+                document.querySelector('#player-bal-hist .hist-svg-wrap').innerHTML = '<div class="hist-empty">No data yet</div>';
+            }
+        }).catch(() => {
+            document.querySelector('#player-bal-hist .hist-svg-wrap').innerHTML = '<div class="hist-empty">No data yet</div>';
+        });
+
+    fetch('/api/history/kitpvp/{{ data.uuid }}')
+        .then(r => r.json())
+        .then(d => {
+            if (d.length) {
+                document.getElementById('player-kpvp-hist').style.display = '';
+                renderHistChart('player-kpvp-hist', d,
+                    [{key: 'kills', color: '#f59e0b', label: 'kills'}],
+                    v => v == null ? '—' : v.toLocaleString());
+            }
+        }).catch(() => {});
 });
 </script>
 {% endblock %}

@@ -11,6 +11,13 @@
     <h1 style="color:{{ name_color }};margin:0;">{{ display_name }}</h1>
 </div>
 
+<div class="hist-section" id="item-price-hist">
+    <h2>📈 Price History</h2>
+    <div class="hist-tabs"></div>
+    <div class="hist-svg-wrap"><div class="hist-empty">Loading…</div></div>
+    <div class="hist-stats"></div>
+</div>
+
 <div class="item-columns">
 
     <!-- BUYING -->
@@ -154,4 +161,25 @@
     .price-grid { grid-template-columns: 1fr; }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/history/item/{{ item_id }}')
+        .then(r => r.json())
+        .then(d => {
+            if (d.length) {
+                renderHistChart('item-price-hist', d,
+                    [
+                        {key: 'best_sell', color: '#f59e0b', label: 'sell'},
+                        {key: 'best_buy',  color: '#3b82f6', label: 'buy'}
+                    ],
+                    v => v == null ? '—' : v.toFixed(3) + 'g');
+            } else {
+                document.querySelector('#item-price-hist .hist-svg-wrap').innerHTML = '<div class="hist-empty">No data yet</div>';
+            }
+        }).catch(() => {
+            document.querySelector('#item-price-hist .hist-svg-wrap').innerHTML = '<div class="hist-empty">No data yet</div>';
+        });
+});
+</script>
 {% endblock %}

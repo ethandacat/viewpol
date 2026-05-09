@@ -143,6 +143,82 @@
             gap: 14px;
         }
 
+        /* ─── History charts ─────────── */
+        .hist-section {
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 16px 18px 14px;
+            margin-bottom: 18px;
+        }
+        .hist-section h2 {
+            margin: 0 0 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .hist-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+        .hist-tab {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #555;
+            padding: 3px 9px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            background: none;
+            transition: all 0.15s;
+        }
+        .hist-tab:hover  { color: #aaa; background: #1c1c1c; }
+        .hist-tab.active { color: #e0e0e0; background: #1e1e1e; border-color: #303030; }
+        .hist-svg-wrap {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            overflow: hidden;
+        }
+        .hist-svg-wrap svg { width: 100%; height: 100%; overflow: visible; }
+        .hist-empty {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #383838;
+            font-size: 12px;
+        }
+        .hist-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .hist-stat { display: flex; flex-direction: column; gap: 1px; }
+        .hist-stat-val { font-size: 15px; font-weight: 700; color: #d8d8d8; }
+        .hist-stat-lbl { font-size: 10.5px; color: #484848; text-transform: uppercase; letter-spacing: 0.6px; }
+        .hist-tooltip {
+            position: absolute;
+            background: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 7px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #e0e0e0;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+            line-height: 1.6;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+        }
+
         /* ─── Cards ──────────────────── */
         .player-card {
             background: #181818;
@@ -320,6 +396,181 @@
         const link = card.querySelector('a[href]');
         if (link) window.location.href = link.href;
     });
+
+    /* ── renderHistChart ─────────────────────────────────────────────
+       Generic deferred history sparkline used on player/town/nation/item pages.
+
+       containerId  – id of the .hist-section wrapper div
+       entries      – [{ts, ...values}] sorted by ts (from /api/history/*)
+       series       – [{key, color, label}]   (1 or 2 lines)
+       fmtVal       – optional value formatter fn(v) → string
+    ── */
+    function renderHistChart(containerId, entries, series, fmtVal) {
+        const section = document.getElementById(containerId);
+        if (!section) return;
+        fmtVal = fmtVal || (v => v == null ? '—' : v.toLocaleString(undefined, {maximumFractionDigits: 2}));
+
+        const TABS = [
+            {label: '24h', ms: 86400000},
+            {label: '3d',  ms: 259200000},
+            {label: '7d',  ms: 604800000},
+        ];
+        let windowMs = 86400000;
+
+        // ── build tabs ────────────────────────────────────────────
+        const tabRow = section.querySelector('.hist-tabs');
+        if (tabRow) {
+            tabRow.innerHTML = TABS.map((t, i) =>
+                `<button class="hist-tab${i===0?' active':''}" data-ms="${t.ms}">${t.label}</button>`
+            ).join('');
+            tabRow.addEventListener('click', e => {
+                const btn = e.target.closest('.hist-tab');
+                if (!btn) return;
+                tabRow.querySelectorAll('.hist-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                windowMs = +btn.dataset.ms;
+                draw();
+            });
+        }
+
+        // ── draw ──────────────────────────────────────────────────
+        function draw() {
+            const svgWrap = section.querySelector('.hist-svg-wrap');
+            const statsEl = section.querySelector('.hist-stats');
+            if (!svgWrap) return;
+
+            const now = Date.now();
+            const pts  = entries.filter(e => e.ts > now - windowMs);
+
+            if (pts.length < 2) {
+                svgWrap.innerHTML = `<div class="hist-empty">${pts.length === 0 ? 'No data yet' : 'Not enough data'}</div>`;
+                if (statsEl) statsEl.innerHTML = '';
+                return;
+            }
+
+            const W = 1000, H = 80;
+            const tMin   = now - windowMs;
+            const tRange = windowMs;
+            const cx = e => (e.ts - tMin) / tRange * W;
+
+            // pre-point for clean left edge
+            const prePt = entries.filter(e => e.ts <= tMin).pop();
+            const render = prePt ? [prePt, ...pts] : pts;
+
+            // compute y scale across all series
+            let vMin = Infinity, vMax = -Infinity;
+            for (const s of series) {
+                for (const e of render) {
+                    const v = e[s.key];
+                    if (v != null) { if (v < vMin) vMin = v; if (v > vMax) vMax = v; }
+                }
+            }
+            if (vMin === vMax) { vMin -= 1; vMax += 1; }
+            const cy = v => H - 4 - ((v - vMin) / (vMax - vMin)) * (H - 12);
+
+            // build polylines
+            let lines = '', areas = '';
+            for (const s of series) {
+                const valid = render.filter(e => e[s.key] != null);
+                if (valid.length < 2) continue;
+                const coords = valid.map(e => `${cx(e).toFixed(1)},${cy(e[s.key]).toFixed(1)}`).join(' ');
+                const aCoords = `${cx(valid[0]).toFixed(1)},${H} ${coords} ${cx(valid[valid.length-1]).toFixed(1)},${H}`;
+                lines += `<polyline points="${coords}" fill="none" stroke="${s.color}" stroke-width="2"
+                    stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+                areas += `<polygon points="${aCoords}" fill="${s.color}" fill-opacity="0.08" pointer-events="none"/>`;
+            }
+
+            const mainKey = series[0].key;
+            const last    = pts[pts.length - 1][mainKey];
+            const all     = pts.map(e => e[mainKey]).filter(v => v != null);
+            const mn      = Math.min(...all), mx = Math.max(...all);
+
+            // gradient id must be unique per section to avoid collisions
+            const gid = `hg_${containerId}`;
+
+            svgWrap.innerHTML = `
+<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="cursor:crosshair">
+  ${areas}${lines}
+  <line id="${containerId}_ch" x1="0" y1="0" x2="0" y2="${H}" stroke="#444" stroke-width="1"
+        stroke-dasharray="3,3" display="none" pointer-events="none"/>
+  <circle id="${containerId}_dot" r="3.5" fill="${series[0].color}" display="none" pointer-events="none"/>
+  <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+</svg>
+<div class="hist-tooltip" id="${containerId}_tip" style="display:none"></div>`;
+
+            // ── hover ─────────────────────────────────────────────
+            const svg  = svgWrap.querySelector('svg');
+            const ch   = svgWrap.querySelector(`#${containerId}_ch`);
+            const dot  = svgWrap.querySelector(`#${containerId}_dot`);
+            const tip  = svgWrap.querySelector(`#${containerId}_tip`);
+
+            function svgX(ev) {
+                const pt = svg.createSVGPoint();
+                pt.x = ev.clientX; pt.y = ev.clientY;
+                return pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+            }
+            function nearest(x) {
+                let best = pts[0], bd = Infinity;
+                for (const p of pts) {
+                    const d = Math.abs(cx(p) - x);
+                    if (d < bd) { bd = d; best = p; }
+                }
+                return best;
+            }
+
+            svg.addEventListener('mousemove', ev => {
+                const p  = nearest(svgX(ev));
+                const pv = p[mainKey];
+                const px = cx(p), py = pv != null ? cy(pv) : H / 2;
+                ch.setAttribute('x1', px); ch.setAttribute('x2', px);
+                ch.removeAttribute('display');
+                if (pv != null) {
+                    dot.setAttribute('cx', px); dot.setAttribute('cy', py);
+                    dot.removeAttribute('display');
+                }
+                const time = new Date(p.ts).toLocaleString('en-US',
+                    {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+                tip.innerHTML = series.map(s =>
+                    `<span style="color:${s.color}">●</span> <strong>${fmtVal(p[s.key])}</strong> ${s.label}`
+                ).join('<br>') + `<br><span style="color:#555;font-size:11px">${time}</span>`;
+                tip.style.display = 'block';
+                const dotPt = svg.createSVGPoint();
+                dotPt.x = px; dotPt.y = py;
+                const sc   = dotPt.matrixTransform(svg.getScreenCTM());
+                const rect = svgWrap.getBoundingClientRect();
+                let left = sc.x - rect.left - tip.offsetWidth / 2;
+                let top  = sc.y - rect.top  - tip.offsetHeight - 8;
+                left = Math.max(4, Math.min(left, svgWrap.offsetWidth - tip.offsetWidth - 4));
+                if (top < 4) top = sc.y - rect.top + 12;
+                tip.style.left = left + 'px';
+                tip.style.top  = top  + 'px';
+            });
+            svg.addEventListener('mouseleave', () => {
+                ch.setAttribute('display', 'none');
+                dot.setAttribute('display', 'none');
+                tip.style.display = 'none';
+            });
+
+            // ── summary stats ─────────────────────────────────────
+            if (statsEl) {
+                statsEl.innerHTML = `
+                    <div class="hist-stat">
+                        <span class="hist-stat-val">${fmtVal(last)}</span>
+                        <span class="hist-stat-lbl">Current</span>
+                    </div>
+                    <div class="hist-stat">
+                        <span class="hist-stat-val">${fmtVal(mx)}</span>
+                        <span class="hist-stat-lbl">Peak (window)</span>
+                    </div>
+                    <div class="hist-stat">
+                        <span class="hist-stat-val">${fmtVal(mn)}</span>
+                        <span class="hist-stat-lbl">Low (window)</span>
+                    </div>`;
+            }
+        }
+
+        draw();
+    }
 
     /* generateFlagSVG — used only as an instant CSS background pre-fill
        while the real /api/flag/... request is in flight on grid pages. */

@@ -15,6 +15,10 @@
         <span class="stats-sep">·</span>
         <span>🏘️ {{ data.stats.numTowns }} towns</span>
         <span class="stats-sep">·</span>
+        <span>🗺️ {{ data.stats.numTownBlocks }} blocks</span>
+        <span class="stats-sep">·</span>
+        <span>💰 {{ data.stats.balance | round(1) }} gold</span>
+        <span class="stats-sep">·</span>
         <span>📅 Since {{ (data.timestamps.registered / 1000) | datetimeformat }}</span>
     </div>
 </div>
@@ -65,6 +69,13 @@
                 <span class="pill {{ 'pill-on' if data.status.isNeutral else 'pill-off' }}">Neutral</span>
                 <span class="pill {{ 'pill-on' if data.status.isPublic else 'pill-off' }}">Public</span>
             </div>
+        </div>
+
+        <div class="hist-section" id="nation-bal-hist">
+            <h2>💰 Balance History</h2>
+            <div class="hist-tabs"></div>
+            <div class="hist-svg-wrap"><div class="hist-empty">Loading…</div></div>
+            <div class="hist-stats"></div>
         </div>
 
         <div class="relations-row">
@@ -377,6 +388,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         container.appendChild(btn);
     });
+
+    fetch('/api/history/nation/{{ data.uuid }}')
+        .then(r => r.json())
+        .then(d => {
+            if (d.length) {
+                renderHistChart('nation-bal-hist', d,
+                    [{key: 'balance', color: '#3b82f6', label: 'gold'}],
+                    v => v == null ? '—' : v.toFixed(1) + 'g');
+            } else {
+                document.querySelector('#nation-bal-hist .hist-svg-wrap').innerHTML = '<div class="hist-empty">No data yet</div>';
+            }
+        }).catch(() => {
+            document.querySelector('#nation-bal-hist .hist-svg-wrap').innerHTML = '<div class="hist-empty">No data yet</div>';
+        });
 });
 </script>
 {% endblock %}
