@@ -9,7 +9,7 @@ Falls back to a live fetch only if the disk file is missing or >2h stale.
 KitPvP is still fetched live (no disk cache for it).
 """
 
-import json, time, os, sqlite3, gc, requests
+import json, re, time, os, sqlite3, gc, requests
 from pathlib import Path
 
 try:
@@ -98,13 +98,28 @@ def _load(filename: str, fallback_url: str) -> list:
 
 # ── Pollers ───────────────────────────────────────────────────────────
 
+def _balance_rows(data: list, ts: int) -> list:
+    """Extract (uuid, ts, balance) rows, skipping entries with no balance data."""
+    rows = []
+    for item in data:
+        uuid = item.get("uuid")
+        if not uuid:
+            continue
+        stats = item.get("stats")
+        if stats is None:
+            # Light-list data — no balance available, skip rather than record 0
+            continue
+        bal = stats.get("balance")
+        if bal is None:
+            continue
+        rows.append((uuid, ts, float(bal)))
+    return rows
+
+
 def poll_players(con: sqlite3.Connection, ts: int):
     try:
         data = _load("players.json", f"{EARTHPOL}/players")
-        rows = [
-            (p["uuid"], ts, float(p.get("stats", {}).get("balance") or 0))
-            for p in data if p.get("uuid")
-        ]
+        rows = _balance_rows(data, ts)
         del data
         con.executemany("INSERT OR IGNORE INTO player_balance VALUES (?,?,?)", rows)
         prune(con, "player_balance", "uuid", ts)
@@ -117,10 +132,7 @@ def poll_players(con: sqlite3.Connection, ts: int):
 def poll_towns(con: sqlite3.Connection, ts: int):
     try:
         data = _load("towns.json", f"{EARTHPOL}/towns")
-        rows = [
-            (t["uuid"], ts, float(t.get("stats", {}).get("balance") or 0))
-            for t in data if t.get("uuid")
-        ]
+        rows = _balance_rows(data, ts)
         del data
         con.executemany("INSERT OR IGNORE INTO town_balance VALUES (?,?,?)", rows)
         prune(con, "town_balance", "uuid", ts)
@@ -133,10 +145,7 @@ def poll_towns(con: sqlite3.Connection, ts: int):
 def poll_nations(con: sqlite3.Connection, ts: int):
     try:
         data = _load("nations.json", f"{EARTHPOL}/nations")
-        rows = [
-            (n["uuid"], ts, float(n.get("stats", {}).get("balance") or 0))
-            for n in data if n.get("uuid")
-        ]
+        rows = _balance_rows(data, ts)
         del data
         con.executemany("INSERT OR IGNORE INTO nation_balance VALUES (?,?,?)", rows)
         prune(con, "nation_balance", "uuid", ts)
@@ -158,14 +167,15 @@ def poll_items(con: sqlite3.Connection, ts: int):
             data = r.json()
             r.close()
 
-        sell: dict = {}
-        buy:  dict = {}
+        # active = shop has stock/space; inactive = listed but empty/full
+        sell_active:   dict = {}
+        sell_inactive: dict = {}
+        buy_active:    dict = {}
+        buy_inactive:  dict = {}
         for s in data:
             item   = s.get("item") or {}
             # item may be a raw string (unparsed) or a dict
             if isinstance(item, str):
-                # minimal parse: extract base item name between quotes
-                import re
                 m = re.search(r'"item"\s*:\s*"([^"]+)"', item)
                 base = m.group(1).lower() if m else ""
             else:
@@ -176,16 +186,21 @@ def poll_items(con: sqlite3.Connection, ts: int):
             amount = int((item if isinstance(item, dict) else {}).get("amount") or 1) or 1
             unit   = price / amount
             stype  = (s.get("type") or "")
-            # normalise type string
             stype  = stype.split(".")[-1].split("@")[0].replace("Type", "").upper()
             stock  = int(s.get("stock") or 0)
             space  = int(s.get("space") or 0)
-            if stype == "SELLING" and stock > 0:
-                if base not in sell or unit < sell[base]:
-                    sell[base] = unit
-            elif stype == "BUYING" and space > 0:
-                if base not in buy or unit > buy[base]:
-                    buy[base] = unit
+            if stype == "SELLING":
+                bucket = sell_active if stock > 0 else sell_inactive
+                if base not in bucket or unit < bucket[base]:
+                    bucket[base] = unit
+            elif stype == "BUYING":
+                bucket = buy_active if space > 0 else buy_inactive
+                if base not in bucket or unit > bucket[base]:
+                    bucket[base] = unit
+
+        # Prefer active prices; fall back to inactive so no item is lost
+        sell = {**sell_inactive, **sell_active}
+        buy  = {**buy_inactive,  **buy_active}
 
         del data
         all_ids = set(sell) | set(buy)
