@@ -387,6 +387,10 @@
 
     <div class="tracker-chart-wrap">
         <div class="tracker-tabs">
+            <button class="tracker-tab" onclick="setWindow(this,3600000)">1h</button>
+            <button class="tracker-tab" onclick="setWindow(this,10800000)">3h</button>
+            <button class="tracker-tab" onclick="setWindow(this,21600000)">6h</button>
+            <button class="tracker-tab" onclick="setWindow(this,43200000)">12h</button>
             <button class="tracker-tab active" onclick="setWindow(this,86400000)">24h</button>
             <button class="tracker-tab" onclick="setWindow(this,259200000)">3d</button>
             <button class="tracker-tab" onclick="setWindow(this,604800000)">7d</button>
