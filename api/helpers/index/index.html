@@ -590,23 +590,30 @@
         }
 
         const W = 1000, H = 90;
-        const maxP   = Math.max(...pts.map(e => e.players), 1);
-        const tMin   = pts[0].ts;
-        const tRange = pts[pts.length - 1].ts - tMin || 1;
 
-        _activePts = pts;
+        // Fixed window: left edge = window start, right edge = now
+        const tMin   = now - _windowMs;
+        const tRange = _windowMs;
+
+        // Prepend the last point before the window so the line connects from the left edge
+        const prePt = _history.filter(e => e.ts <= tMin).pop();
+        const renderPts = prePt ? [prePt, ...pts] : pts;
+
+        const maxP = Math.max(...renderPts.map(e => e.players), 1);
+
+        _activePts = pts;  // hover only snaps to in-window points
         _cx = e => (e.ts - tMin) / tRange * W;
         _cy = e => H - 6 - (e.players / maxP) * (H - 14);
 
-        const lineCoords = pts.map(e => `${_cx(e).toFixed(1)},${_cy(e).toFixed(1)}`).join(' ');
+        const lineCoords = renderPts.map(e => `${_cx(e).toFixed(1)},${_cy(e).toFixed(1)}`).join(' ');
         const areaCoords =
-            `${_cx(pts[0]).toFixed(1)},${H} ` + lineCoords +
-            ` ${_cx(pts[pts.length-1]).toFixed(1)},${H}`;
+            `${_cx(renderPts[0]).toFixed(1)},${H} ` + lineCoords +
+            ` ${_cx(renderPts[renderPts.length-1]).toFixed(1)},${H}`;
 
         let offlineBands = '';
-        for (let i = 0; i < pts.length - 1; i++) {
-            if (!pts[i].online) {
-                const x1 = _cx(pts[i]), x2 = _cx(pts[i + 1]);
+        for (let i = 0; i < renderPts.length - 1; i++) {
+            if (!renderPts[i].online) {
+                const x1 = _cx(renderPts[i]), x2 = _cx(renderPts[i + 1]);
                 offlineBands += `<rect x="${x1.toFixed(1)}" y="0" width="${(x2-x1).toFixed(1)}" height="${H}" fill="rgba(239,68,68,0.10)" pointer-events="none"/>`;
             }
         }
