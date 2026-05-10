@@ -6,7 +6,12 @@ history_poller processes, saving two full Python interpreter instances.
 
   Thread 1 — data_fetcher  : keeps players/towns/nations/sieges fresh on disk
   Thread 2 — status_poller : server online/player-count, every 60 s
-  Thread 3 — history_poller: balance/price/KitPvP snapshots to SQLite, every 1 h
+  Thread 3 — history_poller: balance/price/KitPvP snapshots to SQLite
+               Balances are POSTed in HIST_BATCH-sized chunks with
+               HIST_BATCH_GAP seconds between batches so the work is
+               spread continuously across the hour rather than one burst.
+               Items + KitPvP are fetched once per cycle.
+               Cycle target: 3600 s (any remaining time is slept away).
 """
 
 import gc, json, re, sqlite3, time, os, requests, threading
@@ -34,8 +39,11 @@ DB_PATH   = DATA_DIR / "history.db"
 HIST_FILE = DATA_DIR / "server_history.json"
 
 MAX_HIST_ENTRIES = 10080   # 7 days × 1 min
-MAX_DB_ROWS      = 168     # 7 days × 1 h
+MAX_DB_ROWS      = 168     # 7 days × 24 h (hourly snapshots)
 STALE_SEC        = 7200
+
+HIST_BATCH     = 100   # UUIDs per POST to the balance endpoint
+HIST_BATCH_GAP = 60    # seconds between balance batches
 
 _HEADERS = {"User-Agent": "viewpol/1.0", "Accept": "application/json"}
 
@@ -89,19 +97,12 @@ def _prune(con, table, uuid_col):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _load_disk(filename, fallback_url, http):
-    path = DATA_DIR / filename
+def _uuids_from_disk(filename):
+    """Read the light-list disk file written by data_fetcher and return UUIDs."""
     try:
-        if path.exists() and time.time() - path.stat().st_mtime < STALE_SEC:
-            return json.loads(path.read_bytes())
+        return [x["uuid"] for x in json.loads((DATA_DIR / filename).read_bytes())
+                if x.get("uuid")]
     except Exception:
-        pass
-    print(f"[bg] {filename} stale — live fetch", flush=True)
-    try:
-        r = http.get(fallback_url, timeout=20)
-        data = r.json(); r.close(); return data
-    except Exception as e:
-        print(f"[bg] live fetch error {fallback_url}: {e}", flush=True)
         return []
 
 
@@ -187,29 +188,56 @@ def _run_status_poller():
 
 # ── Thread 3: history poller ──────────────────────────────────────────────────
 
+def _poll_balance_table(con, http, filename, endpoint, table):
+    """
+    POST-based balance snapshot — loads UUIDs from disk, then fetches full
+    data in HIST_BATCH-sized chunks with HIST_BATCH_GAP seconds between
+    each batch so work is spread across the hour.
+    """
+    uuids = _uuids_from_disk(filename)
+    if not uuids:
+        print(f"[bg/history] {table}: no UUIDs on disk, skipping", flush=True)
+        return
+    n_batches = (len(uuids) + HIST_BATCH - 1) // HIST_BATCH
+    print(f"[bg/history] {table}: {len(uuids)} entities → {n_batches} batches", flush=True)
+    for i in range(0, len(uuids), HIST_BATCH):
+        batch    = uuids[i : i + HIST_BATCH]
+        batch_ts = int(time.time() * 1000)
+        try:
+            r    = http.post(f"{EARTHPOL}/{endpoint}", json={"query": batch}, timeout=30)
+            data = r.json(); r.close()
+            rows = _balance_rows(data, batch_ts)
+            if rows:
+                con.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?)", rows)
+                _prune(con, table, "uuid")
+                con.commit()
+            print(f"[bg/history] {table} [{i+1}–{i+len(batch)}] {len(rows)} rows",
+                  flush=True)
+        except Exception as e:
+            print(f"[bg/history] {table} batch {i//HIST_BATCH+1} error: {e}", flush=True)
+        # Sleep between every batch except the last one
+        if i + HIST_BATCH < len(uuids):
+            time.sleep(HIST_BATCH_GAP)
+
+
 def _run_history_poller(con):
     http = _new_session()
     print("[bg/history] started", flush=True)
     while True:
-        ts = int(time.time() * 1000)
-        print(f"[bg/history] polling…", flush=True)
+        cycle_start = time.time()
+        print("[bg/history] cycle start", flush=True)
 
-        # Balance snapshots
-        for filename, url, table in [
-            ("players.json", f"{EARTHPOL}/players", "player_balance"),
-            ("towns.json",   f"{EARTHPOL}/towns",   "town_balance"),
-            ("nations.json", f"{EARTHPOL}/nations",  "nation_balance"),
+        # ── Balance snapshots via POST, spread in HIST_BATCH chunks ──────────
+        for filename, endpoint, table in [
+            ("players.json", "players", "player_balance"),
+            ("towns.json",   "towns",   "town_balance"),
+            ("nations.json", "nations", "nation_balance"),
         ]:
-            try:
-                rows = _balance_rows(_load_disk(filename, url, http), ts)
-                con.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?)", rows)
-                _prune(con, table, "uuid")
-                con.commit()
-                print(f"[bg/history] {table}: {len(rows)}", flush=True)
-            except Exception as e:
-                print(f"[bg/history] {table} error: {e}", flush=True)
+            _poll_balance_table(con, http, filename, endpoint, table)
+            time.sleep(HIST_BATCH_GAP)   # pause between entity types
 
-        # Item prices
+        # ── Item prices (one full pass per cycle) ─────────────────────────────
+        ts = int(time.time() * 1000)
         try:
             path = DATA_DIR / "shopdata.json"
             if path.exists() and time.time() - path.stat().st_mtime < STALE_SEC:
@@ -221,13 +249,14 @@ def _run_history_poller(con):
             sell_active: dict = {}; sell_inactive: dict = {}
             buy_active:  dict = {}; buy_inactive:  dict = {}
             for s in data:
-                item  = s.get("item") or {}
+                item   = s.get("item") or {}
                 if isinstance(item, str):
                     m = re.search(r'"item"\s*:\s*"([^"]+)"', item)
                     base = m.group(1).lower() if m else ""
                 else:
                     base = (item.get("item") or "").lower()
-                if not base: continue
+                if not base:
+                    continue
                 price  = float(s.get("price") or 0)
                 amount = int((item if isinstance(item, dict) else {}).get("amount") or 1) or 1
                 unit   = price / amount
@@ -248,12 +277,14 @@ def _run_history_poller(con):
             _prune(con, "item_price", "item_id")
             con.commit()
             print(f"[bg/history] item_price: {len(rows)}", flush=True)
+            del sell_active, sell_inactive, buy_active, buy_inactive, sell, buy, rows
         except Exception as e:
             print(f"[bg/history] item_price error: {e}", flush=True)
 
-        # KitPvP
+        # ── KitPvP (one full pass per cycle) ──────────────────────────────────
+        ts = int(time.time() * 1000)
         try:
-            rows = []
+            rows   = []
             params = {"sort": "kills", "order": "desc", "limit": 100}
             while True:
                 r    = http.get(KITPVP_LB, params=params, timeout=10)
@@ -264,29 +295,27 @@ def _run_history_poller(con):
                         rows.append((uuid, ts, int(p.get("kills") or 0),
                                      int(p.get("deaths") or 0), int(p.get("assists") or 0)))
                 cursor = data.get("nextCursor")
-                if not cursor: break
+                if not cursor:
+                    break
                 params["cursorValue"] = cursor.get("value")
                 params["cursorUuid"]  = cursor.get("uuid")
             con.executemany("INSERT OR IGNORE INTO kitpvp_stats VALUES (?,?,?,?,?)", rows)
             _prune(con, "kitpvp_stats", "uuid")
             con.commit()
             print(f"[bg/history] kitpvp_stats: {len(rows)}", flush=True)
+            del rows
         except Exception as e:
             print(f"[bg/history] kitpvp error: {e}", flush=True)
 
-        # Explicitly free all large locals before the 1-hour sleep so the
-        # OS can reclaim those pages rather than holding them for an hour.
-        try:
-            del sell_active, sell_inactive, buy_active, buy_inactive, sell, buy
-        except NameError:
-            pass
-        try:
-            del rows
-        except NameError:
-            pass
-        print(f"[bg/history] done. next in 1h.", flush=True)
         gc.collect()
-        time.sleep(3600)
+
+        # ── Sleep for the rest of the 1-hour window ───────────────────────────
+        elapsed   = time.time() - cycle_start
+        sleep_for = max(0.0, 3600.0 - elapsed)
+        print(f"[bg/history] cycle done in {elapsed/60:.1f} min, "
+              f"sleeping {sleep_for/60:.1f} min until next cycle", flush=True)
+        if sleep_for > 0:
+            time.sleep(sleep_for)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
