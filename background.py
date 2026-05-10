@@ -38,8 +38,13 @@ MAX_HIST_ENTRIES = 10080   # 7 days × 1 min
 MAX_DB_ROWS      = 168     # 7 days × 1 h
 STALE_SEC        = 7200
 
-_http = requests.Session()
-_http.headers.update({"User-Agent": "viewpol/1.0", "Accept": "application/json"})
+_HEADERS = {"User-Agent": "viewpol/1.0", "Accept": "application/json"}
+
+def _new_session() -> requests.Session:
+    """Each thread gets its own Session — requests.Session is not thread-safe."""
+    s = requests.Session()
+    s.headers.update(_HEADERS)
+    return s
 
 
 # ── SQLite ────────────────────────────────────────────────────────────────────
@@ -85,7 +90,7 @@ def _prune(con, table, uuid_col):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _load_disk(filename, fallback_url):
+def _load_disk(filename, fallback_url, http):
     path = DATA_DIR / filename
     try:
         if path.exists() and time.time() - path.stat().st_mtime < STALE_SEC:
@@ -94,7 +99,7 @@ def _load_disk(filename, fallback_url):
         pass
     print(f"[bg] {filename} stale — live fetch", flush=True)
     try:
-        r = _http.get(fallback_url, timeout=20)
+        r = http.get(fallback_url, timeout=20)
         data = r.json(); r.close(); return data
     except Exception as e:
         print(f"[bg] live fetch error {fallback_url}: {e}", flush=True)
@@ -128,12 +133,13 @@ ENDPOINTS = [
 ]
 
 def _run_data_fetcher():
+    http = _new_session()
     print("[bg/fetcher] started", flush=True)
     while True:
         for endpoint, filename, transform in ENDPOINTS:
             path = DATA_DIR / filename
             try:
-                r = _http.get(f"{EARTHPOL}/{endpoint}", timeout=20)
+                r = http.get(f"{EARTHPOL}/{endpoint}", timeout=20)
                 r.raise_for_status()
                 data = r.json(); r.close()
                 if transform and isinstance(data, list):
@@ -146,15 +152,17 @@ def _run_data_fetcher():
             except Exception as e:
                 print(f"[bg/fetcher] {endpoint} ✗ {e}", flush=True)
             time.sleep(5)
+        gc.collect()
 
 
 # ── Thread 2: server status poller ───────────────────────────────────────────
 
 def _run_status_poller():
+    http = _new_session()
     print("[bg/status] started", flush=True)
     while True:
         try:
-            r    = _http.get(MC_API, timeout=8)
+            r    = http.get(MC_API, timeout=8)
             data = r.json(); r.close()
             online  = bool(data.get("online", False))
             players = data.get("players", {}).get("online", 0) if online else 0
@@ -178,6 +186,7 @@ def _run_status_poller():
 # ── Thread 3: history poller ──────────────────────────────────────────────────
 
 def _run_history_poller(con):
+    http = _new_session()
     print("[bg/history] started", flush=True)
     while True:
         ts = int(time.time() * 1000)
@@ -190,7 +199,7 @@ def _run_history_poller(con):
             ("nations.json", f"{EARTHPOL}/nations",  "nation_balance"),
         ]:
             try:
-                rows = _balance_rows(_load_disk(filename, url), ts)
+                rows = _balance_rows(_load_disk(filename, url, http), ts)
                 con.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?)", rows)
                 _prune(con, table, "uuid")
                 con.commit()
@@ -245,7 +254,7 @@ def _run_history_poller(con):
             rows = []
             params = {"sort": "kills", "order": "desc", "limit": 100}
             while True:
-                r    = _http.get(KITPVP_LB, params=params, timeout=10)
+                r    = http.get(KITPVP_LB, params=params, timeout=10)
                 data = r.json(); r.close()
                 for p in data.get("items", []):
                     uuid = p.get("uuid")
@@ -264,6 +273,7 @@ def _run_history_poller(con):
             print(f"[bg/history] kitpvp error: {e}", flush=True)
 
         print(f"[bg/history] done. next in 1h.", flush=True)
+        gc.collect()
         time.sleep(3600)
 
 
