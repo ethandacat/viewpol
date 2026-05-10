@@ -11,7 +11,6 @@ history_poller processes, saving two full Python interpreter instances.
 
 import gc, json, re, sqlite3, time, os, requests, threading
 from pathlib import Path
-from codecs import decode as _decode
 
 try:
     import ctypes
@@ -214,7 +213,7 @@ def _run_history_poller(con):
         try:
             path = DATA_DIR / "shopdata.json"
             if path.exists() and time.time() - path.stat().st_mtime < STALE_SEC:
-                data = json.loads(_decode(path.read_bytes()))
+                data = json.loads(path.read_bytes())
             else:
                 r = http.get(f"{EARTHPOL}/shops", timeout=30)
                 data = r.json(); r.close()
@@ -275,6 +274,16 @@ def _run_history_poller(con):
         except Exception as e:
             print(f"[bg/history] kitpvp error: {e}", flush=True)
 
+        # Explicitly free all large locals before the 1-hour sleep so the
+        # OS can reclaim those pages rather than holding them for an hour.
+        try:
+            del sell_active, sell_inactive, buy_active, buy_inactive, sell, buy
+        except NameError:
+            pass
+        try:
+            del rows
+        except NameError:
+            pass
         print(f"[bg/history] done. next in 1h.", flush=True)
         gc.collect()
         time.sleep(3600)

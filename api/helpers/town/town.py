@@ -20,11 +20,12 @@ def town(identifier):
 
     # Fetch full town data — list endpoint only has name+uuid, need POST for details
     try:
-        req = _http.post("https://api.earthpol.com/astra/towns",
-                         json={"query": [identifier]}, timeout=10)
-        if req.status_code != 200 or not req.json():
+        req    = _http.post("https://api.earthpol.com/astra/towns",
+                            json={"query": [identifier]}, timeout=10)
+        result = req.json(); req.close()
+        if req.status_code != 200 or not result:
             return "", 404
-        data = req.json()[0]
+        data = result[0]
     except Exception:
         return "", 404
 

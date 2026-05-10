@@ -33,11 +33,12 @@ def player(identifier):
 
     # POST for full player data (GET list only has name+uuid)
     try:
-        req = _http.post("https://api.earthpol.com/astra/players",
-                         json={"query": [identifier]}, timeout=10)
-        if req.status_code != 200 or not req.json():
+        req    = _http.post("https://api.earthpol.com/astra/players",
+                            json={"query": [identifier]}, timeout=10)
+        result = req.json(); req.close()
+        if req.status_code != 200 or not result:
             return "", 404
-        data = req.json()[0]
+        data = result[0]
     except Exception:
         return "", 404
 
@@ -51,6 +52,7 @@ def player(identifier):
         sreq      = _http.post("https://api.earthpol.com/astra/shops",
                                json={"query": [uuid]}, timeout=10)
         shops_raw = sreq.json() if sreq.status_code == 200 else []
+        sreq.close()
     except Exception:
         shops_raw = []
 

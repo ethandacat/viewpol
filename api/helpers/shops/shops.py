@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-import json, time, os
-from codecs import decode
+import gc, json, time, os
 from pathlib import Path
 from threading import Thread, Lock
 from ..helpers import itemstack
@@ -58,11 +57,12 @@ def load_shops() -> list:
             entry = _shop_cache.get("data")
             if entry is not None and _shop_cache.get("mtime") == mtime:
                 return entry
-        shops = json.loads(decode(SHOP_FILE.read_bytes()))
+        shops = json.loads(SHOP_FILE.read_bytes())
         _process(shops)
         with _cache_lock:
             _shop_cache["mtime"] = mtime
             _shop_cache["data"]  = shops
+        gc.collect()   # free old processed list + trim heap via gc.callbacks
         return shops
     except Exception:
         return []
