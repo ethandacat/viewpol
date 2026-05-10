@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify
 import json, time, os
 from codecs import decode
 from pathlib import Path
-from threading import Thread
+from threading import Thread, Lock
 from ..helpers import itemstack
 
 app = Blueprint("shops", __name__, template_folder="")
@@ -17,6 +17,10 @@ _http.headers.update({
 DATA_DIR  = Path(os.environ.get("DATA_DIR", "data"))
 SHOP_FILE = DATA_DIR / "shopdata.json"
 SHOP_TTL  = 300   # seconds — trigger background refresh if stale
+
+_shop_cache: dict = {}   # {"mtime": float, "data": list}
+_cache_lock  = Lock()
+_refresh_lock = Lock()   # ensures only one refresh thread runs at a time
 
 
 # ── Type normalisation ─────────────────────────────────────────────
@@ -44,15 +48,21 @@ def _process(shops):
         n["unit_price"] = n["price"] / qty if qty else float("inf")
 
 
-# ── Disk read — no in-memory cache ────────────────────────────────
+# ── Mtime-gated in-memory cache ───────────────────────────────────
 
 def load_shops() -> list:
-    """Read shopdata.json from disk and return a freshly processed list.
-    No module-level state is kept; every call allocates and returns a new list.
-    """
+    """Return cached shop list, reloading only when shopdata.json changes."""
     try:
+        mtime = SHOP_FILE.stat().st_mtime
+        with _cache_lock:
+            entry = _shop_cache.get("data")
+            if entry is not None and _shop_cache.get("mtime") == mtime:
+                return entry
         shops = json.loads(decode(SHOP_FILE.read_bytes()))
         _process(shops)
+        with _cache_lock:
+            _shop_cache["mtime"] = mtime
+            _shop_cache["data"]  = shops
         return shops
     except Exception:
         return []
@@ -68,13 +78,16 @@ def _refresh_disk():
         tmp.replace(SHOP_FILE)
     except Exception:
         pass
+    finally:
+        _refresh_lock.release()
 
 
 def _maybe_refresh():
-    """Kick off a background refresh if the disk file is stale."""
+    """Kick off a background refresh if stale — at most one thread at a time."""
     try:
         if not SHOP_FILE.exists() or time.time() - SHOP_FILE.stat().st_mtime > SHOP_TTL:
-            Thread(target=_refresh_disk, daemon=True).start()
+            if _refresh_lock.acquire(blocking=False):
+                Thread(target=_refresh_disk, daemon=True).start()
     except Exception:
         pass
 
