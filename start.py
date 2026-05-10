@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-ViewPol launcher — starts and babysits all three processes:
-  1. Gunicorn  (Flask web app)
-  2. poller.py (server-status, every 1 min)
-  3. history_poller.py (balance/price/KitPvP, every 1 h)
+ViewPol launcher — starts and babysits two processes:
+  1. Gunicorn     (Flask web app)
+  2. background.py (data fetcher + status poller + history poller, threaded)
 
 Usage:
     python3 start.py
@@ -39,16 +38,8 @@ SERVICES = [
                  "--preload"],
     },
     {
-        "name": "data_fetcher",
-        "cmd":  [PYTHON, "data_fetcher.py"],
-    },
-    {
-        "name": "poller",
-        "cmd":  [PYTHON, "poller.py"],
-    },
-    {
-        "name": "history_poller",
-        "cmd":  [PYTHON, "history_poller.py"],
+        "name": "background",
+        "cmd":  [PYTHON, "background.py"],
     },
 ]
 
