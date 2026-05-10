@@ -141,14 +141,17 @@ def _run_data_fetcher():
             try:
                 r = http.get(f"{EARTHPOL}/{endpoint}", timeout=20)
                 r.raise_for_status()
-                data = r.json(); r.close()
-                if transform and isinstance(data, list):
-                    transform(data)
+                raw = r.content; r.close()
+                if transform:
+                    # Parse only when a transform is needed (towns/nations name fix)
+                    data = json.loads(raw); del raw
+                    if isinstance(data, list):
+                        transform(data)
+                    raw = json.dumps(data).encode(); del data
                 tmp = path.with_suffix(".tmp")
-                tmp.write_text(json.dumps(data), encoding="utf-8")
+                tmp.write_bytes(raw); del raw
                 tmp.replace(path)
-                print(f"[bg/fetcher] {endpoint} ✓ ({len(data) if isinstance(data, list) else '?'})", flush=True)
-                del data
+                print(f"[bg/fetcher] {endpoint} ✓", flush=True)
             except Exception as e:
                 print(f"[bg/fetcher] {endpoint} ✗ {e}", flush=True)
             time.sleep(5)
@@ -159,6 +162,11 @@ def _run_data_fetcher():
 
 def _run_status_poller():
     http = _new_session()
+    # Load history once into memory — append in place to avoid repeated alloc/free
+    try:
+        history = json.loads(HIST_FILE.read_bytes())
+    except Exception:
+        history = []
     print("[bg/status] started", flush=True)
     while True:
         try:
@@ -167,15 +175,10 @@ def _run_status_poller():
             online  = bool(data.get("online", False))
             players = data.get("players", {}).get("online", 0) if online else 0
             maximum = data.get("players", {}).get("max",    0) if online else 0
-            entry   = {"ts": int(time.time() * 1000), "online": online,
-                       "players": players, "max": maximum}
-            try:
-                history = json.loads(HIST_FILE.read_bytes())
-            except Exception:
-                history = []
-            history.append(entry)
+            history.append({"ts": int(time.time() * 1000), "online": online,
+                            "players": players, "max": maximum})
             if len(history) > MAX_HIST_ENTRIES:
-                history = history[-MAX_HIST_ENTRIES:]
+                del history[:-MAX_HIST_ENTRIES]   # trim in place, no new list
             HIST_FILE.write_text(json.dumps(history), encoding="utf-8")
             print(f"[bg/status] {'online' if online else 'offline'} — {players} players", flush=True)
         except Exception as e:
