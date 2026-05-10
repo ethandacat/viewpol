@@ -35,7 +35,7 @@ SERVICES = [
                  "--access-logfile", "-",
                  "--max-requests", "500",
                  "--max-requests-jitter", "50",
-                 "--preload"],
+                 "--timeout", "30"],
     },
     {
         "name": "background",

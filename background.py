@@ -216,7 +216,7 @@ def _run_history_poller(con):
             if path.exists() and time.time() - path.stat().st_mtime < STALE_SEC:
                 data = json.loads(_decode(path.read_bytes()))
             else:
-                r = _http.get(f"{EARTHPOL}/shops", timeout=30)
+                r = http.get(f"{EARTHPOL}/shops", timeout=30)
                 data = r.json(); r.close()
 
             sell_active: dict = {}; sell_inactive: dict = {}
