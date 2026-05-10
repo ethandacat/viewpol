@@ -45,4 +45,22 @@ app.register_blueprint(errors.app)
 
 
 def create_app():
+    # Pre-warm the mtime cache in the background so the first real request
+    # doesn't pay JSON-parse costs for all data files.
+    import threading
+    from api.helpers.helpers.cache import load as _load
+    from api.helpers.shops.shops import shop_count as _shop_count
+
+    def _prewarm():
+        for fn in ("nations.json", "towns.json", "players.json", "sieges.json"):
+            try:
+                _load(fn)
+            except Exception:
+                pass
+        try:
+            _shop_count()
+        except Exception:
+            pass
+
+    threading.Thread(target=_prewarm, daemon=True).start()
     return app

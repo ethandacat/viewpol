@@ -49,27 +49,49 @@ def _process(shops):
 
 # ── Mtime-gated in-memory cache ───────────────────────────────────
 
+def _load_raw() -> bytes:
+    """Return raw shopdata bytes, reloading from disk only when the file changes."""
+    mtime = SHOP_FILE.stat().st_mtime
+    with _cache_lock:
+        if _shop_cache.get("mtime") == mtime and "raw" in _shop_cache:
+            return _shop_cache["raw"]
+    raw = SHOP_FILE.read_bytes()
+    with _cache_lock:
+        _shop_cache["mtime"] = mtime
+        _shop_cache["raw"]   = raw
+        _shop_cache.pop("count", None)   # invalidate stale count
+    return raw
+
+
 def load_shops() -> list:
-    """Return shop list, using a raw-bytes mtime cache to avoid repeated disk reads.
-    JSON is parsed on every call — keeps ~3 MB bytes in RAM instead of ~15-20 MB
-    of Python objects, which matters on memory-constrained VPS hosts."""
+    """Return shop list. Parses JSON per-call from the bytes cache (~3 MB) so the
+    full parsed list (~15-20 MB of Python objects) is never held in RAM at rest."""
     try:
-        mtime = SHOP_FILE.stat().st_mtime
-        with _cache_lock:
-            if _shop_cache.get("mtime") == mtime and "raw" in _shop_cache:
-                raw = _shop_cache["raw"]
-            else:
-                raw = None
-        if raw is None:
-            raw = SHOP_FILE.read_bytes()
-            with _cache_lock:
-                _shop_cache["mtime"] = mtime
-                _shop_cache["raw"]   = raw
-        shops = json.loads(raw)
+        shops = json.loads(_load_raw())
         _process(shops)
+        with _cache_lock:
+            if "count" not in _shop_cache:
+                _shop_cache["count"] = len(shops)
         return shops
     except Exception:
         return []
+
+
+def shop_count() -> int:
+    """Return the number of shops without keeping a parsed list in memory.
+    Warms the raw-bytes cache as a side-effect so load_shops() hits are cheaper."""
+    try:
+        mtime = SHOP_FILE.stat().st_mtime
+        with _cache_lock:
+            if _shop_cache.get("mtime") == mtime and "count" in _shop_cache:
+                return _shop_cache["count"]
+        raw   = _load_raw()
+        count = len(json.loads(raw))
+        with _cache_lock:
+            _shop_cache["count"] = count
+        return count
+    except Exception:
+        return 0
 
 
 def _refresh_disk():
