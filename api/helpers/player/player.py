@@ -23,19 +23,23 @@ def _normalize_shop_type(n):
 
 @app.route("/players/<identifier>")
 def player(identifier):
-    # ── Player data — fresh from disk every request ───────────────
-    data = find("players.json", identifier)
+    # Resolve name → UUID via disk cache, then redirect
+    cached = find("players.json", identifier)
+    if cached:
+        uuid = cached.get("uuid", "")
+        if uuid and uuid != identifier:
+            return redirect(f"/players/{uuid}", 301)
+        identifier = uuid or identifier
 
-    if not data:
-        # Edge-case fallback (new player not yet in cache file)
-        try:
-            req = _http.post("https://api.earthpol.com/astra/players",
-                             json={"query": [identifier]}, timeout=10)
-            if req.status_code != 200 or not req.json():
-                return "", 404
-            data = req.json()[0]
-        except Exception:
+    # POST for full player data (GET list only has name+uuid)
+    try:
+        req = _http.post("https://api.earthpol.com/astra/players",
+                         json={"query": [identifier]}, timeout=10)
+        if req.status_code != 200 or not req.json():
             return "", 404
+        data = req.json()[0]
+    except Exception:
+        return "", 404
 
     data_uuid = data.get("uuid", "")
     if data_uuid and data_uuid != identifier:
