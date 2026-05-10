@@ -2,6 +2,11 @@
 Mtime-gated in-memory cache — one copy per file, refreshed only when
 data_fetcher.py writes a new version (~every 20s). Between refreshes,
 all requests share the same deserialized object at zero cost.
+
+Files larger than MAX_CACHE_BYTES are NOT stored in the cache; they are
+read and parsed fresh on every miss. Set CACHE_MAX_BYTES in the environment
+to tune the threshold (default 4 MB). The cache currently holds at most 4
+files (players, towns, nations, sieges), so it is bounded by design.
 """
 
 import json, os
@@ -10,6 +15,9 @@ from threading import Lock
 from typing import Union, Optional
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
+
+# Files larger than this will not be held in RAM — parsed fresh on every miss.
+_MAX_CACHE_BYTES = int(os.environ.get("CACHE_MAX_BYTES", 4_000_000))  # 4 MB default
 
 _store: dict = {}   # filename -> (mtime, data)
 _lock  = Lock()
@@ -25,9 +33,11 @@ def load(filename: str) -> Union[list, dict]:
             if entry and entry[0] == mtime:
                 return entry[1]
         # File changed (or first load) — read outside the lock to avoid blocking
-        data = json.loads(path.read_bytes())
-        with _lock:
-            _store[filename] = (mtime, data)
+        raw  = path.read_bytes()
+        data = json.loads(raw)
+        if len(raw) <= _MAX_CACHE_BYTES:
+            with _lock:
+                _store[filename] = (mtime, data)
         return data
     except Exception:
         return []

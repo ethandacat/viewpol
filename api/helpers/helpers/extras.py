@@ -26,9 +26,3 @@ def datetimeformat(value):
     dt = datetime.fromtimestamp(value, UTC)
     return dt.strftime("%B %d, %Y %I:%M %p UTC")
 
-@app.after_app_request
-def _release_memory(response):
-    """Trigger a GC cycle after every request. The registered gc.callback
-    will call malloc_trim(0) automatically when collection finishes."""
-    gc.collect()
-    return response

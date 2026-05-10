@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-import gc, json, time, os
+import json, time, os
 from pathlib import Path
 from threading import Thread, Lock
 from ..helpers import itemstack
@@ -17,7 +17,7 @@ DATA_DIR  = Path(os.environ.get("DATA_DIR", "data"))
 SHOP_FILE = DATA_DIR / "shopdata.json"
 SHOP_TTL  = 300   # seconds — trigger background refresh if stale
 
-_shop_cache: dict = {}   # {"mtime": float, "data": list}
+_shop_cache: dict = {}   # {"mtime": float, "raw": bytes}  — bytes not parsed dicts
 _cache_lock  = Lock()
 _refresh_lock = Lock()   # ensures only one refresh thread runs at a time
 
@@ -50,19 +50,23 @@ def _process(shops):
 # ── Mtime-gated in-memory cache ───────────────────────────────────
 
 def load_shops() -> list:
-    """Return cached shop list, reloading only when shopdata.json changes."""
+    """Return shop list, using a raw-bytes mtime cache to avoid repeated disk reads.
+    JSON is parsed on every call — keeps ~3 MB bytes in RAM instead of ~15-20 MB
+    of Python objects, which matters on memory-constrained VPS hosts."""
     try:
         mtime = SHOP_FILE.stat().st_mtime
         with _cache_lock:
-            entry = _shop_cache.get("data")
-            if entry is not None and _shop_cache.get("mtime") == mtime:
-                return entry
-        shops = json.loads(SHOP_FILE.read_bytes())
+            if _shop_cache.get("mtime") == mtime and "raw" in _shop_cache:
+                raw = _shop_cache["raw"]
+            else:
+                raw = None
+        if raw is None:
+            raw = SHOP_FILE.read_bytes()
+            with _cache_lock:
+                _shop_cache["mtime"] = mtime
+                _shop_cache["raw"]   = raw
+        shops = json.loads(raw)
         _process(shops)
-        with _cache_lock:
-            _shop_cache["mtime"] = mtime
-            _shop_cache["data"]  = shops
-        gc.collect()   # free old processed list + trim heap via gc.callbacks
         return shops
     except Exception:
         return []
@@ -71,7 +75,7 @@ def load_shops() -> list:
 def _refresh_disk():
     """Background thread: re-fetch from EarthPol API and overwrite shopdata.json."""
     try:
-        raw = _http.get("https://api.earthpol.com/astra/shops").content
+        raw = _http.get("https://api.earthpol.com/astra/shops", timeout=30).content
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         tmp = SHOP_FILE.with_suffix(".tmp")
         tmp.write_bytes(raw)
