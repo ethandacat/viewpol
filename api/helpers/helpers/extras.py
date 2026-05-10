@@ -10,7 +10,9 @@ try:
     def _gc_callback(phase, info):
         if phase == "stop":
             _libc.malloc_trim(0)
-    gc.callbacks.append(_gc_callback)
+    # Guard against double-registration on hot-reload
+    if _gc_callback not in gc.callbacks:
+        gc.callbacks.append(_gc_callback)
 except Exception:
     pass
 
