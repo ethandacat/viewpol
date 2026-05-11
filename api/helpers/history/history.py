@@ -21,14 +21,16 @@ DB_PATH  = DATA_DIR / "history.db"
 def _query(sql: str, params: tuple) -> list:
     if not DB_PATH.exists():
         return []
+    con = None
     try:
         con = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         con.execute("PRAGMA journal_mode=WAL")
-        rows = con.execute(sql, params).fetchall()
-        con.close()
-        return rows
+        return con.execute(sql, params).fetchall()
     except Exception:
         return []
+    finally:
+        if con:
+            con.close()
 
 
 @app.route("/api/history/player/<uuid>")

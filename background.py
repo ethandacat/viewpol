@@ -60,6 +60,8 @@ def _open_db() -> sqlite3.Connection:
     con = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA synchronous=NORMAL")
+    con.execute("PRAGMA cache_size = -8000")   # 8 MB page cache ceiling
+    con.execute("PRAGMA temp_store = FILE")    # use disk, not RAM, for sort/window ops
     con.executescript("""
         CREATE TABLE IF NOT EXISTS player_balance (
             uuid TEXT NOT NULL, ts INTEGER NOT NULL, balance REAL NOT NULL,
@@ -141,8 +143,8 @@ def _run_data_fetcher():
             try:
                 r = http.get(f"{EARTHPOL}/{endpoint}", timeout=20)
                 r.raise_for_status()
-                raw = r.content; r.close()
-                if transform:
+                raw = r.content; r.close(); del r  # del r releases r._content ref so bytes
+                if transform:                       # are freed at `del raw` below, not later
                     # Parse only when a transform is needed (towns/nations name fix)
                     data = json.loads(raw); del raw
                     if isinstance(data, list):
@@ -203,21 +205,25 @@ def _poll_balance_table(con, http, filename, endpoint, table):
     for i in range(0, len(uuids), HIST_BATCH):
         batch    = uuids[i : i + HIST_BATCH]
         batch_ts = int(time.time() * 1000)
+        data     = None
         try:
             r    = http.post(f"{EARTHPOL}/{endpoint}", json={"query": batch}, timeout=30)
-            data = r.json(); r.close()
+            data = r.json(); r.close(); del r
             rows = _balance_rows(data, batch_ts)
             if rows:
                 con.executemany(f"INSERT OR IGNORE INTO {table} VALUES (?,?,?)", rows)
-                _prune(con, table, "uuid")
                 con.commit()
             print(f"[bg/history] {table} [{i+1}–{i+len(batch)}] {len(rows)} rows",
                   flush=True)
         except Exception as e:
             print(f"[bg/history] {table} batch {i//HIST_BATCH+1} error: {e}", flush=True)
+        del data   # free response payload before the inter-batch sleep
         # Sleep between every batch except the last one
         if i + HIST_BATCH < len(uuids):
             time.sleep(HIST_BATCH_GAP)
+    # Prune once per entity type — not per batch — to avoid repeated full-table scans
+    _prune(con, table, "uuid")
+    con.commit()
 
 
 def _run_history_poller(con):
@@ -234,6 +240,7 @@ def _run_history_poller(con):
             ("nations.json", "nations", "nation_balance"),
         ]:
             _poll_balance_table(con, http, filename, endpoint, table)
+            gc.collect()   # trim heap between entity types; malloc_trim fires via callback
             time.sleep(HIST_BATCH_GAP)   # pause between entity types
 
         # ── Item prices (one full pass per cycle) ─────────────────────────────

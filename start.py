@@ -14,6 +14,16 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
+# ── glibc allocator tuning ────────────────────────────────────────────────────
+# Python requests 256 KB arenas from glibc. With the default allocator, freed
+# arenas in the middle of the heap can never be returned to the OS (only the
+# heap top can be trimmed). Setting MALLOC_MMAP_THRESHOLD_ to 128 KB forces
+# all 256 KB arenas to be allocated via mmap — they ARE returned to the OS the
+# moment they are fully freed, eliminating the RSS drift seen after ~45 min.
+# MALLOC_ARENA_MAX=2 limits thread-local arena proliferation (default is 8×nCPU).
+os.environ.setdefault("MALLOC_ARENA_MAX", "2")
+os.environ.setdefault("MALLOC_MMAP_THRESHOLD_", "131072")
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 parser = argparse.ArgumentParser(description="Start all ViewPol services")
