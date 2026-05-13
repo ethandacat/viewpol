@@ -43,8 +43,8 @@ SERVICES = [
                  "--worker-class", "gevent",
                  "--worker-connections", "100",
                  "--access-logfile", "-",
-                 "--max-requests", "500",
-                 "--max-requests-jitter", "50",
+                 "--max-requests", "200",
+                 "--max-requests-jitter", "25",
                  "--timeout", "30"],
     },
     {
