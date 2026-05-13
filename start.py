@@ -43,8 +43,7 @@ SERVICES = [
                  "--worker-class", "gevent",
                  "--worker-connections", "100",
                  "--access-logfile", "-",
-                 "--max-requests", "500",
-                 "--max-requests-jitter", "50",
+                 "--config", "gunicorn.conf.py",
                  "--timeout", "30"],
     },
     {
