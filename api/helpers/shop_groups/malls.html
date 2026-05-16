@@ -339,6 +339,8 @@ function renderPicks(containerId, shops) {
                 <div class="sg-pick-sub">${s.type === 'SELLING' ? 'Selling' : 'Buying'}${loc ? ' · ' + loc : ''}</div>
             </div>
             <div class="sg-pick-price">${fmtUnitPrice(s)}</div>`;
+        const pickImg = div.querySelector('.sg-pick-img');
+        if (pickImg) minetipAttach(pickImg, () => minetipHtml(s.item));
         div.addEventListener('click', () => toggleShop(s.id));
         el.appendChild(div);
     });

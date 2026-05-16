@@ -342,6 +342,35 @@
             color: #bbb;
         }
 
+        /* ── Minetip (Minecraft item tooltip) ─── */
+        #minetip-tooltip {
+            position: fixed; top: 0; left: 0;
+            background-color: rgba(16, 0, 16, 0.94);
+            padding: 0.65em 1em;
+            font-family: 'Minecraftia', sans-serif;
+            font-size: 20px; word-spacing: 1px; white-space: nowrap;
+            line-height: 1.35em; margin: 0.125em 0.25em;
+            pointer-events: none; z-index: 9999;
+            color: #FBFBFB; text-shadow: 0.125em 0.125em 0 #3E3E3E;
+        }
+        #minetip-tooltip::before {
+            content: ""; position: absolute;
+            top: 0.125em; right: -0.125em; bottom: 0.125em; left: -0.125em;
+            border: 0.15em solid #100010; border-style: none solid;
+            border-color: rgba(16, 0, 16, 0.94);
+        }
+        #minetip-tooltip::after {
+            content: ""; position: absolute;
+            top: 0.125em; right: 0; bottom: 0.125em; left: 0;
+            border: 0.125em solid #2D0A63;
+            border-image: linear-gradient(rgba(80, 0, 255, 0.31), rgba(40, 0, 127, 0.31)) 1;
+        }
+        #minetip-tooltip .minetip-title    { display: block; }
+        #minetip-tooltip .minetip-enchant  { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; }
+        #minetip-tooltip .minetip-lore     { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; font-style: italic; }
+        #minetip-tooltip .minetip-spacer    { display: block; height: 0.4em; }
+        #minetip-tooltip .minetip-spacer-sm { display: block; height: 0.2em; }
+
         @media (max-width: 768px) {
             .page-wrapper { padding: 20px 16px 120px; }
             .navbar { padding: 0 16px; gap: 10px; }
@@ -571,6 +600,99 @@
 
         draw();
     }
+
+    /* ── Minetip shared helpers ────────────────────────────────────── */
+    const MINECRAFT_COLORS = {
+        black:'#000000', dark_blue:'#0000AA', dark_green:'#00AA00',
+        dark_aqua:'#00AAAA', dark_red:'#AA0000', dark_purple:'#AA00AA',
+        gold:'#FFAA00', gray:'#AAAAAA', dark_gray:'#555555',
+        blue:'#5555FF', green:'#55FF55', aqua:'#55FFFF',
+        red:'#FF5555', light_purple:'#FF55FF', yellow:'#FFFF55', white:'#FFFFFF'
+    };
+
+    function _mesc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function _stripCodes(s) {
+        return String(s).replace(/§[0-9a-fk-orA-FK-OR]/g, '');
+    }
+
+    function minetipHtml(item) {
+        if (!item) return '';
+        const meta = item.meta || {};
+        const itemId = (item.item || 'unknown').toLowerCase();
+        const dn = meta['display-name'];
+        let nameColor = '#FFFFFF';
+        let rawName = itemId.replace(/_/g, ' ');
+        if (dn && typeof dn === 'object' && dn.extra?.[0]?.text) {
+            rawName = _stripCodes(dn.extra[0].text);
+            nameColor = '#FF55FF';
+        } else if (meta.enchants || meta['stored-enchants']) {
+            nameColor = '#55FFFF';
+        }
+        const dispName = rawName.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        let html = `<span class="minetip-title" style="color:${nameColor};">${_mesc(dispName)}</span>`;
+
+        const allEnchants = Object.assign({}, meta.enchants || {}, meta['stored-enchants'] || {});
+        const enchKeys = Object.keys(allEnchants);
+        if (enchKeys.length) {
+            html += '<span class="minetip-spacer-sm"></span>';
+            enchKeys.forEach(k => {
+                const label = k.replace('minecraft:', '').replace(/_/g, ' ')
+                               .replace(/\b\w/g, c => c.toUpperCase());
+                html += `<span class="minetip-enchant">${_mesc(label)} ${allEnchants[k]}</span>`;
+            });
+        }
+
+        if (Array.isArray(meta.lore) && meta.lore.length) {
+            html += '<span class="minetip-spacer"></span>';
+            meta.lore.forEach(line => {
+                if (!line) return;
+                if (Array.isArray(line.extra)) {
+                    let lineHtml = '';
+                    line.extra.forEach(part => {
+                        const color = MINECRAFT_COLORS[part.color] || '#AAAAAA';
+                        const bold = part.bold ? 'font-weight:700;' : '';
+                        const italic = part.italic !== false ? 'font-style:italic;' : '';
+                        lineHtml += `<span style="color:${color};${bold}${italic}">${_mesc(part.text || '')}</span>`;
+                    });
+                    html += `<span class="minetip-lore">${lineHtml}</span>`;
+                } else {
+                    html += `<span class="minetip-lore" style="color:#AAAAAA;">${_mesc(_stripCodes(line.text || ''))}</span>`;
+                }
+            });
+        }
+        return html;
+    }
+
+    (function() {
+        let _tip = null, _winW, _winH, _tipW, _tipH;
+        function _pos(e) {
+            let top = e.clientY - 34, left = e.clientX + 14;
+            if (left + _tipW > _winW) left -= _tipW + 36;
+            if (left < 0) { left = 0; top -= _tipH - 22; if (top < 0) top += _tipH + 47; }
+            else if (top < 0) { top = 0; }
+            else if (top + _tipH > _winH) { top = _winH - _tipH; }
+            _tip.style.top = top + 'px'; _tip.style.left = left + 'px';
+        }
+        window.minetipAttach = function(el, htmlFn) {
+            el.addEventListener('mouseenter', e => {
+                const html = htmlFn();
+                if (!html) return;
+                if (_tip) _tip.remove();
+                _tip = document.createElement('div');
+                _tip.id = 'minetip-tooltip';
+                _tip.innerHTML = html;
+                document.body.appendChild(_tip);
+                _winW = window.innerWidth; _winH = window.innerHeight;
+                _tipW = _tip.offsetWidth;  _tipH = _tip.offsetHeight;
+                _pos(e);
+            });
+            el.addEventListener('mousemove', e => { if (_tip) _pos(e); });
+            el.addEventListener('mouseleave', () => { if (_tip) { _tip.remove(); _tip = null; } });
+        };
+    })();
 
     /* generateFlagSVG — onerror fallback when CDN has no flag for this entity. */
     function generateFlagSVG(name) {

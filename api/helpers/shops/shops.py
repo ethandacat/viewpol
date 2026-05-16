@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-import json, time, os
+import json, time, os, re
 from pathlib import Path
 from threading import Thread, Lock
 from ..helpers import itemstack
@@ -122,9 +122,41 @@ def _maybe_refresh():
 
 # ── Filtering ──────────────────────────────────────────────────────
 
+_COLOR_RE = re.compile(r'§[0-9a-fk-orA-FK-OR]')
+
+def _search_text(n):
+    parts = [n["item"]["item"].replace("_", " ")]
+    meta = n["item"].get("meta") or {}
+
+    dn = meta.get("display-name")
+    if isinstance(dn, dict):
+        extra = dn.get("extra") or []
+        if extra and isinstance(extra[0], dict):
+            text = extra[0].get("text")
+            if text:
+                parts.append(_COLOR_RE.sub("", str(text)))
+
+    for key in ("enchants", "stored-enchants"):
+        enchants = meta.get(key)
+        if isinstance(enchants, dict):
+            for ench in enchants:
+                parts.append(ench.replace("minecraft:", "").replace("_", " "))
+
+    for key in ("title", "author"):
+        val = meta.get(key)
+        if val:
+            parts.append(_COLOR_RE.sub("", str(val)))
+
+    owner = n.get("owner")
+    if owner:
+        parts.append(str(owner))
+
+    return " ".join(parts).lower()
+
+
 def filter_shops(reqdata, query, stock_filter, type_filter):
     if query:
-        reqdata = [n for n in reqdata if query in n["item"]["item"].replace("_", " ").lower()]
+        reqdata = [n for n in reqdata if query in _search_text(n)]
 
     def passes(n):
         t = n.get("type", "UNKNOWN")

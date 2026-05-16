@@ -108,6 +108,8 @@ function createCard(n) {
             <p>${renderStockSpace(n)}</p>
             <p style="font-size:.75rem;color:lightgray;font-style:italic;line-height:1.1;">${renderMeta(n)}</p>
         </a>`;
+    const img = card.querySelector('img');
+    if (img) minetipAttach(img, () => minetipHtml(n.item));
     return card;
 }
 

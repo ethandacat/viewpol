@@ -203,50 +203,6 @@
     font-size: 11px; color: #555; margin: 0 0 14px;
 }
 
-/* Minecraft Wiki exact tooltip implementation */
-#minetip-tooltip {
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: rgba(16, 0, 16, 0.94);
-    padding: 0.65em 1em;
-    font-family: 'Minecraftia', sans-serif;
-    font-size: 20px;
-    word-spacing: 1px;
-    white-space: nowrap;
-    line-height: 1.35em;
-    margin: 0.125em 0.25em;
-    pointer-events: none;
-    z-index: 9999;
-    color: #FBFBFB;
-    text-shadow: 0.125em 0.125em 0 #3E3E3E;
-}
-#minetip-tooltip::before {
-    content: "";
-    position: absolute;
-    top: 0.125em;
-    right: -0.125em;
-    bottom: 0.125em;
-    left: -0.125em;
-    border: 0.15em solid #100010;
-    border-style: none solid;
-    border-color: rgba(16, 0, 16, 0.94);
-}
-#minetip-tooltip::after {
-    content: "";
-    position: absolute;
-    top: 0.125em;
-    right: 0;
-    bottom: 0.125em;
-    left: 0;
-    border: 0.125em solid #2D0A63;
-    border-image: linear-gradient(rgba(80, 0, 255, 0.31), rgba(40, 0, 127, 0.31)) 1;
-}
-#minetip-tooltip .minetip-title    { display: block; }
-#minetip-tooltip .minetip-enchant  { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; }
-#minetip-tooltip .minetip-lore     { display: block; color: #AAAAAA; text-shadow: 0.125em 0.125em 0 #2A2A2A; font-style: italic; }
-#minetip-tooltip .minetip-spacer    { display: block; height: 0.4em; }
-#minetip-tooltip .minetip-spacer-sm { display: block; height: 0.2em; }
 .mc-text { font-family:'Minecraftia',sans-serif; font-size:12px; line-height:1.5; margin:0 0 4px; }
 
 .stats-bar {
@@ -376,8 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const wrap = document.getElementById('item-hero-wrap');
     if (!wrap) return;
 
-    let tip = null, winW, winH, tipW, tipH;
-
     function buildContent() {
         const titleEl = document.getElementById('minetip-data-title');
         const enchantsEl = document.getElementById('minetip-data-enchants');
@@ -387,23 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (enchantsEl) html += enchantsEl.innerHTML;
         if (loreEl) html += loreEl.innerHTML;
         return html;
-    }
-
-    function position(e) {
-        let top = e.clientY - 34;
-        let left = e.clientX + 14;
-        if (left + tipW > winW) { left -= tipW + 36; }
-        if (left < 0) {
-            left = 0;
-            top -= tipH - 22;
-            if (top < 0) top += tipH + 47;
-        } else if (top < 0) {
-            top = 0;
-        } else if (top + tipH > winH) {
-            top = winH - tipH;
-        }
-        tip.style.top  = top + 'px';
-        tip.style.left = left + 'px';
     }
 
     // ── Book viewer ──────────────────────────────
@@ -469,20 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    wrap.addEventListener('mouseenter', e => {
-        if (tip) tip.remove();
-        tip = document.createElement('div');
-        tip.id = 'minetip-tooltip';
-        tip.innerHTML = buildContent();
-        document.body.appendChild(tip);
-        winW = window.innerWidth;
-        winH = window.innerHeight;
-        tipW = tip.offsetWidth;
-        tipH = tip.offsetHeight;
-        position(e);
-    });
-    wrap.addEventListener('mousemove', e => { if (tip) position(e); });
-    wrap.addEventListener('mouseleave', () => { if (tip) { tip.remove(); tip = null; } });
+    minetipAttach(wrap, buildContent);
 });
 </script>
 {% endblock %}

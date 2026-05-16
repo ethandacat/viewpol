@@ -65,5 +65,14 @@ document.getElementById('item-search').addEventListener('input', function() {
         card.classList.toggle('hidden', !card.dataset.name.includes(q));
     });
 });
+
+document.querySelectorAll('.item-card').forEach(card => {
+    const img = card.querySelector('img');
+    const nameEl = card.querySelector('.item-name');
+    if (img && nameEl) {
+        const name = nameEl.textContent.trim();
+        minetipAttach(img, () => `<span class="minetip-title">${_mesc(name)}</span>`);
+    }
+});
 </script>
 {% endblock %}
