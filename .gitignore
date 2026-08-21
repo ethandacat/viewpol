@@ -18,3 +18,7 @@ venv.bak/
 
 # Runtime data directory
 data/
+
+# ToolRemote (machine-local, never commit)
+.toolremote/local/
+.toolremote/*.local.json

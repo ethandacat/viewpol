@@ -1,0 +1,26 @@
+{
+  "projectId": "5b639986d3884da6b85d5215a1cb4cdb",
+  "projectName": "viewpol",
+  "mainBranch": "main",
+  "autosaveBranch": "autosave",
+  "autosave": {
+    "enabled": true,
+    "intervalSeconds": 180,
+    "retentionHours": 24,
+    "debounceSeconds": 5
+  },
+  "checkpoint": {
+    "intervalHours": 6,
+    "retentionDays": 7
+  },
+  "remote": {
+    "name": "origin",
+    "url": "https://github.com/ethandacat/viewpol.git"
+  },
+  "largeFiles": {
+    "thresholdMB": 50,
+    "enabled": false,
+    "provider": "server",
+    "options": {}
+  }
+}
