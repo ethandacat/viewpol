@@ -14,8 +14,8 @@
     "retentionDays": 7
   },
   "remote": {
-    "name": "origin",
-    "url": "https://github.com/ethandacat/viewpol.git"
+    "name": "toolremote",
+    "url": "ssh://toolremote/srv/toolremote/repos/viewpol-5b639986.git"
   },
   "largeFiles": {
     "thresholdMB": 50,
